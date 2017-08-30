@@ -1,0 +1,8 @@
+FROM alpine:latest
+RUN apk update
+RUN apk add ca-certificates
+
+COPY ./cmd/email/email /email
+
+ENTRYPOINT /email -D
+

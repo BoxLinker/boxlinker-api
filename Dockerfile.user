@@ -1,0 +1,9 @@
+FROM alpine:latest
+RUN apk update
+RUN apk add ca-certificates
+RUN apk add -U tzdata
+
+COPY ./cmd/user/user /user
+
+CMD /user
+
