@@ -11,16 +11,22 @@ http:
   secret: asecretforlocaldevelopment
   debug:
     addr: :5001
-notifications:
-  endpoints:
-    - name: alistener
-      disabled: false
-      url: http://192.168.21.117:8080/v1/registry/event
-      headers:
-        Authorization:
-        - just4fun
-      timeout: 500ms
-      threshold: 5
-      backoff: 3s
-      ignoredmediatypes:
-        - application/octet-stream
+auth:
+  token:
+    realm: http://10.14.22.26:8082/v1/registry/auth
+    service: "Local Registry Server"
+    issuer: "Local Registry Auth Service"
+    rootcertbundle: /etc/registry/root.crt
+#notifications:
+#  endpoints:
+#    - name: alistener
+#      disabled: false
+#      url: http://192.168.21.117:8080/v1/registry/event
+#      headers:
+#        Authorization:
+#        - just4fun
+#      timeout: 500ms
+#      threshold: 5
+#      backoff: 3s
+#      ignoredmediatypes:
+#        - application/octet-stream

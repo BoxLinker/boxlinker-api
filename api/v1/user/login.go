@@ -2,10 +2,11 @@ package user
 
 import (
 	"net/http"
-	"github.com/cabernety/boxlinker"
+	"github.com/BoxLinker/boxlinker-api"
 	log "github.com/Sirupsen/logrus"
-	settings "github.com/cabernety/boxlinker/settings/user"
+	settings "github.com/BoxLinker/boxlinker-api/settings/user"
 	"time"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginForm struct {
@@ -21,6 +22,26 @@ func (f *LoginForm) validate() string {
 		return "您还没有填写用户名"
 	}
 	return ""
+}
+
+func (a *Api) BasicAuth(w http.ResponseWriter, r *http.Request) {
+	user, pass, ok := r.BasicAuth()
+	if !ok {
+		http.Error(w, "", http.StatusBadRequest)
+		return
+	}
+	log.Debugf("user: %s, pass: %s", user, pass)
+	u := a.manager.GetUserByName(user)
+	if u == nil {
+		http.Error(w, "", http.StatusNotFound)
+		return
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(pass)); err != nil {
+		http.Error(w, "", http.StatusUnauthorized)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("ok"))
 }
 
 func (a *Api) Login(w http.ResponseWriter, r *http.Request){

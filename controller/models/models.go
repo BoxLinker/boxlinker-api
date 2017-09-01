@@ -8,6 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/go-xorm/core"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/urfave/cli"
 )
 
 var (
@@ -15,7 +16,7 @@ var (
 )
 
 func init(){
-	tables = append(tables, new(User))
+	tables = append(tables, new(User), new(UserToBeConfirmed))
 }
 
 
@@ -27,9 +28,19 @@ type DBOptions struct {
 	Name string
 }
 
+func GetDBOptions(c *cli.Context) DBOptions {
+	return DBOptions{
+		User: 		c.String("db-user"),
+		Password: 	c.String("db-password"),
+		Host: 		c.String("db-host"),
+		Port: 		c.Int("db-port"),
+		Name: 		c.String("db-name"),
+	}
+}
 
-func NewEngine(config DBOptions) (*xorm.Engine, error){
+func NewEngine(config DBOptions, t ...[]interface{}) (*xorm.Engine, error){
 	var Param string = "?"
+	var _tables []interface{}
 	if strings.Contains(config.Name, Param) {
 		Param = "&"
 	}
@@ -48,7 +59,12 @@ func NewEngine(config DBOptions) (*xorm.Engine, error){
 	log.Info("Connect to db ok.")
 	x.SetMapper(core.GonicMapper{})
 	log.Infof("start to sync tables ...")
-	if err = x.StoreEngine("InnoDB").Sync2(tables...); err != nil {
+	if len(t) > 0 {
+		_tables = t[0]
+	} else {
+		_tables = tables
+	}
+	if err = x.StoreEngine("InnoDB").Sync2(_tables...); err != nil {
 		return nil, fmt.Errorf("sync tables err: %v",err)
 	}
 	x.ShowSQL(true)

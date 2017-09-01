@@ -4,19 +4,28 @@ import (
 	"github.com/urfave/cli"
 	"github.com/Sirupsen/logrus"
 	"os"
-	api "github.com/cabernety/boxlinker/api/v1/registry"
+	cmd "github.com/BoxLinker/boxlinker-api/cmd"
+	registryModels "github.com/BoxLinker/boxlinker-api/controller/models/registry"
+	api "github.com/BoxLinker/boxlinker-api/api/v1/registry"
 	"fmt"
+	"github.com/BoxLinker/boxlinker-api/controller/models"
+	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	"github.com/BoxLinker/boxlinker-api/pkg/registry/authn"
+	"errors"
+	"github.com/BoxLinker/boxlinker-api/pkg/registry/tools"
 )
 
 var flags = []cli.Flag{
 	cli.StringFlag{
-		Name: "listen, l",
-		Value: ":8080",
-		EnvVar: "LISTEN",
+		Name: "basic-auth-url",
+		Value: "http://localhost:8080/v1/user/auth/basicAuth",
+		EnvVar: "BASIC_AUTH_URL",
 	},
-	cli.BoolFlag{
-		Name: "debug, D",
-		EnvVar: "DEBUG",
+
+	cli.StringFlag{
+		Name: "config-file",
+		Value: "./auth_config.yml",
+		EnvVar: "CONFIG_FILE",
 	},
 }
 
@@ -30,17 +39,51 @@ func main(){
 		return nil
 	}
 	app.Action = action
-	app.Flags = flags
+	app.Flags = append(flags, append(cmd.DBFlags, cmd.SharedFlags...)...)
 
 	if err := app.Run(os.Args); err != nil {
 		logrus.Fatal(err)
 	}
 }
 
+
 func action(c *cli.Context) error {
+
+	configFilePath := c.String("config-file")
+	if len(configFilePath) == 0 {
+		return errors.New("no config file provided")
+	}
+
+	config, err := tools.LoadConfig(configFilePath)
+	if err != nil {
+		return err
+	}
+
+	basicAuthURL := c.String("basic-auth-url")
+	if len(basicAuthURL) == 0 {
+		return errors.New("basic-auth-url is required")
+	}
+
+	engine, err := models.NewEngine(models.GetDBOptions(c), registryModels.Tables())
+	if err != nil {
+		return fmt.Errorf("new db engine err: %v", err)
+	}
+
+	controllerManager, err := manager.NewRegistryManager(engine)
+	if err != nil {
+		return fmt.Errorf("new controller manager err: %v", err)
+	}
+
+	// authenticator
+	authenticator := &authn.DefaultAuthenticator{
+		BasicAuthURL: basicAuthURL,
+	}
 
 	a := &api.Api{
 		Listen: c.String("listen"),
+		Manager: controllerManager,
+		Authenticator: authenticator,
+		Config: config,
 	}
 
 	return fmt.Errorf("Run Api err: %v", a.Run())

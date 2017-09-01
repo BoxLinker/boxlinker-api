@@ -4,25 +4,16 @@ import (
 	"github.com/urfave/cli"
 	log "github.com/Sirupsen/logrus"
 	"os"
-	api "github.com/cabernety/boxlinker/api/v1/email"
-	"github.com/cabernety/boxlinker/controller/amqp"
+	api "github.com/BoxLinker/boxlinker-api/api/v1/email"
+	"github.com/BoxLinker/boxlinker-api/controller/amqp"
+	"github.com/BoxLinker/boxlinker-api/cmd"
 )
 
 var flags = []cli.Flag{
-	cli.StringFlag{
-		Name: "listen, l",
-		Value: ":8080",
-		EnvVar: "LISTEN",
-	},
 	cli.BoolFlag{
 		Name: "test",
 		EnvVar: "TEST",
 	},
-	cli.BoolFlag{
-		Name: "debug, D",
-		EnvVar: "DEBUG",
-	},
-
 	cli.StringFlag{
 		Name: "mail-host",
 		Value: "smtp.exmail.qq.com:25",
@@ -49,38 +40,7 @@ var flags = []cli.Flag{
 		EnvVar: "MAIL_TYPE",
 	},
 
-	cli.StringFlag{
-		Name: "rabbitmq-uri",
-		Value: "amqp://guest:guest@localhost:5672/",
-		EnvVar: "RABBITMQ_URI",
-	},
-	cli.StringFlag{
-		Name: "rabbitmq-exchange",
-		Value: "test-exchange",
-		EnvVar: "RABBITMQ_EXCHANGE",
-	},
-	cli.StringFlag{
-		Name: "rabbitmq-exchange-type",
-		Usage: "Exchange type - direct|fanout|topic|x-custom",
-		Value: "fanout",
-		EnvVar: "RABBITMQ_EXCHANGE_TYPE",
-	},
-	cli.StringFlag{
-		Name: "rabbitmq-queue-name",
-		Value: "test-queue-name",
-		EnvVar: "RABBITMQ_QUEUE_NAME",
-	},
-	cli.StringFlag{
-		Name: "rabbitmq-consumer-tag",
-		Usage: "AMQP consumer tag (should not be blank)",
-		Value: "boxlinker-email",
-		EnvVar: "RABBITMQ_CONSUMER_TAG",
-	},
-	cli.StringFlag{
-		Name: "rabbitmq-binding-key",
-		Value: "boxlinker-email-amqp-binding-key",
-		EnvVar: "RABBITMQ_BINDING_KEY",
-	},
+
 
 
 }
@@ -95,7 +55,7 @@ func main(){
 		return nil
 	}
 	app.Action = action
-	app.Flags = flags
+	app.Flags = append(flags, append(cmd.AMQPFlags, cmd.SharedFlags...)...)
 
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)

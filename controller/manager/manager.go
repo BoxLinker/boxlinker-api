@@ -2,20 +2,21 @@ package manager
 
 import (
 	"github.com/go-xorm/xorm"
-	"github.com/cabernety/boxlinker/controller/models"
+	"github.com/BoxLinker/boxlinker-api/controller/models"
 
 	"fmt"
-	mAuth "github.com/cabernety/boxlinker/auth"
+	mAuth "github.com/BoxLinker/boxlinker-api/auth"
 	"errors"
-	settings "github.com/cabernety/boxlinker/settings/user"
-	"github.com/cabernety/boxlinker"
+	settings "github.com/BoxLinker/boxlinker-api/settings/user"
+	"github.com/BoxLinker/boxlinker-api"
 	log "github.com/Sirupsen/logrus"
+	"github.com/BoxLinker/boxlinker-api/controller/amqp"
 )
 
 type Manager interface {
 	VerifyAuthToken(token string) (map[string]interface{}, error)
 	VerifyUsernamePassword(username, password, hash string) (bool, error)
-	GenerateToken(uid string, username string) (string, error)
+	GenerateToken(uid string, username string, exp ...int64) (string, error)
 
 	// user
 	CheckAdminUser() error
@@ -23,14 +24,22 @@ type Manager interface {
 	GetUserById(id string) (*models.User)
 	GetUsers(pageConfig boxlinker.PageConfig) ([]*models.User, error)
 	SaveUser(user *models.User) error
+
+	SaveUserToBeConfirmed(user *models.UserToBeConfirmed) error
+	DeleteUserToBeConfirmed(uid string) error
+	DeleteUsersToBeConfirmedByName(username string) error
+	GetUserToBeConfirmed(id string, username string) (*models.UserToBeConfirmed, error)
+
 	IsUserExists(username string) (bool, error)
 	IsEmailExists(email string) (bool, error)
 	UpdatePassword(id string, password string) (bool, error)
+
 }
 
 type DefaultManager struct {
 	authenticator mAuth.Authenticator
 	engine *xorm.Engine
+	producer *amqp.Producer
 }
 
 type ManagerOptions struct {
@@ -71,10 +80,64 @@ func (m DefaultManager) VerifyUsernamePassword(username, password, hash string) 
 	return m.authenticator.Authenticate(username, password, hash)
 }
 
-func (m DefaultManager) GenerateToken(uid string, username string) (string, error) {
-	return m.authenticator.GenerateToken(uid, username)
+func (m DefaultManager) GenerateToken(uid string, username string, exp ...int64) (string, error) {
+	return m.authenticator.GenerateToken(uid, username, exp...)
 }
 
+func (m DefaultManager) GetUserToBeConfirmed(id string, username string) (*models.UserToBeConfirmed, error) {
+	sess := m.engine.NewSession()
+	defer sess.Close()
+
+	u := &models.UserToBeConfirmed{
+		Id: id,
+		Name: username,
+	}
+
+	has, err := sess.Get(u)
+	if err != nil {
+		return nil, err
+	}
+	if !has {
+		return nil, nil
+	} else {
+		return u, nil
+	}
+}
+
+func (m DefaultManager) DeleteUsersToBeConfirmedByName(username string) error {
+	sess := m.engine.NewSession()
+	defer sess.Close()
+
+	_, err := sess.And("name = ?", username).Delete(new(models.UserToBeConfirmed))
+	return err
+}
+
+func (m DefaultManager) DeleteUserToBeConfirmed(uid string) error {
+	sess := m.engine.NewSession()
+	defer sess.Close()
+
+	if err := sess.Begin(); err != nil {
+		return err
+	}
+	_, err := sess.ID(uid).Delete(new(models.UserToBeConfirmed))
+	if err != nil {
+		return err
+	}
+	return sess.Commit()
+}
+func (m DefaultManager) SaveUserToBeConfirmed(user *models.UserToBeConfirmed) error {
+	sess := m.engine.NewSession()
+	defer sess.Close()
+
+	if err := sess.Begin(); err != nil {
+		return err
+	}
+	if _, err := sess.Insert(user); err != nil {
+		sess.Rollback()
+		return err
+	}
+	return sess.Commit()
+}
 func (m DefaultManager) SaveUser(user *models.User) error {
 	sess := m.engine.NewSession()
 	defer sess.Close()

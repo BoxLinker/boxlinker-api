@@ -6,14 +6,14 @@ import (
 	"github.com/rs/cors"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
-	"github.com/cabernety/boxlinker/controller/amqp"
+	"github.com/BoxLinker/boxlinker-api/controller/amqp"
 	"encoding/json"
 	"time"
 	"fmt"
 	"net/smtp"
 	"strings"
 	"io/ioutil"
-	"github.com/cabernety/boxlinker"
+	"github.com/BoxLinker/boxlinker-api"
 )
 
 
@@ -58,11 +58,10 @@ func (a *Api) Run() error {
 
 	globalMux := http.NewServeMux()
 
-	if a.testMode {
-		emailRouter := mux.NewRouter()
-		emailRouter.HandleFunc("/v1/email/sendTest", a.Send).Methods("POST")
-		globalMux.Handle("/v1/email/", emailRouter)
-	}
+	emailRouter := mux.NewRouter()
+	emailRouter.HandleFunc("/v1/email/sendTest", a.Send).Methods("POST")
+	emailRouter.HandleFunc("/v1/email/send", a.Send).Methods("POST")
+	globalMux.Handle("/v1/email/", emailRouter)
 
 	s := &http.Server{
 		Addr: a.listen,
@@ -75,6 +74,7 @@ func (a *Api) Run() error {
 func (a *Api) Send(w http.ResponseWriter, r *http.Request) {
 
 	b, err := ioutil.ReadAll(r.Body)
+	log.Debugf("<- %s", string(b))
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
 		return

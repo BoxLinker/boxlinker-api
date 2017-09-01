@@ -2,11 +2,18 @@ package user
 
 import (
 	"net/http"
-	"github.com/cabernety/boxlinker"
-	"github.com/cabernety/boxlinker/controller/models"
+	"github.com/BoxLinker/boxlinker-api"
+	"github.com/BoxLinker/boxlinker-api/controller/models"
 	"regexp"
 	"fmt"
-	"github.com/cabernety/boxlinker/auth"
+	"github.com/BoxLinker/boxlinker-api/auth"
+	"github.com/BoxLinker/boxlinker-api/modules/httplib"
+
+	userSettings "github.com/BoxLinker/boxlinker-api/settings/user"
+	emailApi "github.com/BoxLinker/boxlinker-api/api/v1/email"
+	"encoding/json"
+	"time"
+	"github.com/Sirupsen/logrus"
 )
 
 type RegForm struct {
@@ -72,17 +79,59 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 	//pass, err := auth.Hash(form.Password)
 	pass, err := auth.Hash(form.Password)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("auth hash failed: %v", err))
 		return
 	}
 
-	if err := a.manager.SaveUser(&models.User{
+	u := &models.UserToBeConfirmed{
 		Name: form.Username,
 		Password: string(pass),
 		Email: form.Email,
-	}); err != nil {
+	}
+
+	if err := a.manager.SaveUserToBeConfirmed(u); err != nil {
 		boxlinker.Resp(w, 1, nil, err.Error())
 		return
 	}
-	boxlinker.Resp(w, 0, nil, "success")
+
+	logrus.Debugf("gen verify email token: uid:%s, name:%s", u.Id, u.Name)
+	token, err := a.manager.GenerateToken(u.Id, u.Name, time.Now().Add(time.Minute * 15).Unix())
+
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("generate token err: %v", err))
+		return
+	}
+
+	eF := &emailApi.SendForm{
+		To: []string{form.Email},
+		Subject: "用户注册验证邮件 -- 无需回复",
+		Body: 	fmt.Sprintf("<h3>点击下面的链接以完成注册(有效时间 15 分钟)：</h3><br/><a target=\"_blank\" href=\"%s\">%s</a>",
+							fmt.Sprintf("%s?confirm_token=%s", userSettings.VERIFY_EMAIL_URI, token),
+							"点击这里，验证邮箱",
+				),
+	}
+	b, err := json.Marshal(eF)
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("email form marshal err: %v", err))
+		return
+	}
+	resp, err := httplib.Post(a.sendEmailUri).Body(b).Response()
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("send email err: %v", err))
+		return
+	}
+	status, msg, _, err := boxlinker.ParseResp(resp.Body)
+
+	// 发送邮件失败，删除 userToBeConfirmed
+	if status != boxlinker.STATUS_OK || err != nil {
+		if err := a.manager.DeleteUserToBeConfirmed(u.Id); err != nil {
+			boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("del userToBeConfirmed err: %v", err))
+			return
+		}
+	}
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("send email parse body err: %v", err))
+		return
+	}
+	boxlinker.Resp(w, status, nil, msg)
 }

@@ -3,7 +3,27 @@ package boxlinker
 import (
 	"net/http"
 	"encoding/json"
+	"io/ioutil"
+	"io"
 )
+
+type respResults struct {
+	status int
+	msg string
+	results interface{}
+}
+
+func ParseResp(body io.ReadCloser) (int, string, interface{}, error){
+	b, err := ioutil.ReadAll(body)
+	if err != nil {
+		return -1, "", nil, err
+	}
+	re := &respResults{}
+	if err := json.Unmarshal(b, re); err != nil {
+		return -1, "", nil, err
+	}
+	return re.status, re.msg, re.results, nil
+}
 
 func Resp(w http.ResponseWriter, status int, results interface{}, msg ...string){
 	var (

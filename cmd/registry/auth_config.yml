@@ -1,0 +1,7 @@
+server:
+  addr: ":8082"
+token:
+  issuer: "Local Registry Auth Service"
+  expiration: 900
+  certificate: "./root.crt"
+  key: "./private_key.pem"

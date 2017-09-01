@@ -6,14 +6,14 @@ import (
 	"time"
 	"golang.org/x/crypto/bcrypt"
 	_ "github.com/Sirupsen/logrus"
-	settings "github.com/cabernety/boxlinker/settings/user"
+	settings "github.com/BoxLinker/boxlinker-api/settings/user"
 	"golang.org/x/crypto/scrypt"
 )
 
 type (
 	Authenticator interface{
 		Authenticate(username, password, hash string) (bool, error)
-		GenerateToken(uid string, username string) (string, error)
+		GenerateToken(uid string, username string, exp ...int64) (string, error)
 		IsUpdateSupported() bool
 		Name() string
 	}
@@ -29,12 +29,16 @@ func HashPassword(password string) (string, error) {
 	return string(h[:]), err
 }
 
-func GenerateToken(uid string, username string) (string, error) {
+func GenerateToken(uid string, username string, exp ...int64) (string, error) {
 
 	claims := make(jwt.MapClaims)
 	claims["uid"] = uid
 	claims["username"] = username
-	claims["exp"] = time.Now().Add(time.Hour * 480).Unix()
+	if len(exp) > 0 {
+		claims["exp"] = exp[0]
+	} else {
+		claims["exp"] = time.Now().Add(time.Hour * 480).Unix()
+	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(settings.TOKEN_KEY))

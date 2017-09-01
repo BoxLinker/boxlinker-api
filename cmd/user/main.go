@@ -3,53 +3,34 @@ package main
 import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/urfave/cli"
-	"github.com/cabernety/boxlinker/controller/manager"
-	"github.com/cabernety/boxlinker/auth/builtin"
-	api "github.com/cabernety/boxlinker/api/v1/user"
+	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	"github.com/BoxLinker/boxlinker-api/auth/builtin"
+	api "github.com/BoxLinker/boxlinker-api/api/v1/user"
 
 	"os"
-	settings "github.com/cabernety/boxlinker/settings/user"
+	settings "github.com/BoxLinker/boxlinker-api/settings/user"
 	"fmt"
+	"github.com/BoxLinker/boxlinker-api/cmd"
 )
 
 var (
 	flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:   "debug, D",
-			Usage:  "enable debug",
-			EnvVar: "DEBUG",
+		cli.StringFlag{
+			Name: "confirm-email-token-secret",
+			Value:	"arandomconfirmemailtokensecret",
+			EnvVar: "CONFIRM_EMAIL_TOKEN_SECRET",
 		},
 		cli.StringFlag{
-			Name:   "listen, l",
-			Value:  ":8080",
-			Usage:  "server listen address",
-			EnvVar: "LISTEN",
+			Name: "send-email-uri",
+			Value: "http://localhost:8081/v1/email/send",
+			EnvVar: "SEND_EMAIL_URI",
 		},
 		cli.StringFlag{
-			Name:   "db-user",
-			Value:  "root",
-			EnvVar: "DB_USER",
+			Name: "verify-email-uri",
+			Value: "http://localhost:8080/v1/user/auth/confirm_email",
+			EnvVar: "VERIFY_EMAIL_URI",
 		},
-		cli.StringFlag{
-			Name:   "db-password",
-			Value:  "123456",
-			EnvVar: "DB_PASSWORD",
-		},
-		cli.StringFlag{
-			Name:   "db-host",
-			Value:  "127.0.0.1",
-			EnvVar: "DB_HOST",
-		},
-		cli.StringFlag{
-			Name:   "db-port",
-			Value:  "3306",
-			EnvVar: "DB_PORT",
-		},
-		cli.StringFlag{
-			Name:   "db-name",
-			Value:  "boxlinker",
-			EnvVar: "DB_NAME",
-		},
+
 		cli.StringFlag{
 			Name:   "admin-name",
 			Value:  "admin",
@@ -92,7 +73,7 @@ func main() {
 		}
 		return nil
 	}
-	app.Flags = flags
+	app.Flags = append(flags, append(cmd.DBFlags, cmd.SharedFlags...)...)
 
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
@@ -126,6 +107,7 @@ func action(c *cli.Context) error {
 	return api.NewApi(api.ApiOptions{
 		Listen: c.String("listen"),
 		Manager: controllerManager,
+		SendEmailUri: c.String("send-email-uri"),
 	}).Run()
 
 }

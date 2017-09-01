@@ -2,8 +2,8 @@ package user
 
 import (
 	"net/http"
-	"github.com/cabernety/boxlinker"
-	"github.com/cabernety/boxlinker/auth"
+	"github.com/BoxLinker/boxlinker-api"
+	"github.com/BoxLinker/boxlinker-api/auth"
 )
 
 type (

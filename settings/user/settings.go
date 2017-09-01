@@ -14,6 +14,11 @@ var (
 	COOKIE_DOMAIN string
 
 	USER_PASSWORD_SALT string
+
+	CONFIRM_EMAIL_TOKEN_SECRET string
+
+	// 验证邮件里的验证链接前缀
+	VERIFY_EMAIL_URI string
 )
 
 func paramRequired(key,name string) {
@@ -40,5 +45,8 @@ func InitSettings(c *cli.Context){
 
 	COOKIE_DOMAIN = c.String("cookie-domain")
 
+	CONFIRM_EMAIL_TOKEN_SECRET = c.String("confirm-email-token-secret")
+
+	VERIFY_EMAIL_URI = c.String("verify-email-uri")
 }
 

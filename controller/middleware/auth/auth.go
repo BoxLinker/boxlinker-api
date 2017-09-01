@@ -2,8 +2,8 @@ package auth
 
 import (
 	"net/http"
-	"github.com/cabernety/boxlinker/controller/manager"
-	"github.com/cabernety/boxlinker"
+	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	"github.com/BoxLinker/boxlinker-api"
 	"golang.org/x/net/context"
 )
 

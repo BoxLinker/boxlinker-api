@@ -9,10 +9,18 @@ import (
 	"io/ioutil"
 	"github.com/Sirupsen/logrus"
 	"encoding/json"
+	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	"github.com/BoxLinker/boxlinker-api/pkg/registry/authn"
+	"github.com/BoxLinker/boxlinker-api/pkg/registry/tools"
+	"strings"
+	"sort"
 )
 
 type Api struct {
 	Listen string
+	Manager manager.RegistryManager
+	Authenticator authn.Authenticator
+	Config *tools.Config
 }
 
 type RegistryCallback struct {
@@ -42,13 +50,111 @@ type RegistryCallback struct {
 		} 	`json:"source"`
 	}	`json:"events"`
 }
+
+type authScope struct {
+	Type string
+	Name string
+	Actions []string
+}
+
+type authRequest struct {
+	User string
+	Password authn.PasswordString
+	Account string
+	Service string
+	Scopes []authScope
+}
+
+
+func prepareRequest(r *http.Request) (*authRequest, error) {
+	ar := &authRequest{}
+	user, pass, ok := r.BasicAuth()
+	if ok {
+		ar.User = user
+		ar.Password = authn.PasswordString(pass)
+	}
+	ar.Account = r.FormValue("account")
+	if ar.Account == "" {
+		ar.Account = ar.User
+	} else if ar.Account != "" && ar.Account != ar.User {
+		return nil, fmt.Errorf("user and account are not same (%q and %q)", ar.User, ar.Account)
+	}
+
+	ar.Service = r.FormValue("service")
+
+	if err := r.ParseForm(); err != nil {
+		return nil, fmt.Errorf("invalid form value: %s", err)
+	}
+	if r.FormValue("scope") != "" {
+		for _, scopeStr := range r.Form["scope"] {
+			var scope authScope
+			parts := strings.Split(scopeStr, ":")
+			switch len(parts) {
+			case 3:
+				scope = authScope{
+					Type: parts[0],
+					Name: parts[1],
+					Actions: strings.Split(parts[2], ","),
+				}
+			case 4:
+				scope = authScope{
+					Type: parts[0],
+					Name: parts[1] + ":" + parts[2],
+					Actions: strings.Split(parts[3], ","),
+				}
+			default:
+				return nil, fmt.Errorf("invalid scope (%q)", scopeStr)
+			}
+			sort.Strings(scope.Actions)
+			ar.Scopes = append(ar.Scopes, scope)
+		}
+	}
+
+	return ar, nil
+}
+
 // POST 	/v1/registry/auth
+func (a *Api) DoRegistryAuth(w http.ResponseWriter, r *http.Request){
+	ar, err := prepareRequest(r)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Bad Request: %s", err), http.StatusBadRequest)
+		return
+	}
+	logrus.Debugf("Auth request: %+v", ar)
+	authResult, _, err := a.Authenticator.Authenticate(ar.User, ar.Password)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Authentication failed (%s)", err), http.StatusUnauthorized)
+		return
+	}
+	if !authResult {
+		logrus.Warnf("Auth failed (user:%s)", ar.User)
+		w.Header()["WWW-Authenticate"] = []string{fmt.Sprintf(`Basic realm="%s"`, a.Config.Token.Issuer)}
+		http.Error(w, "Auth Failed.", http.StatusUnauthorized)
+		return
+	}
+
+	// authorize based on scopes
+
+
+
+	t := &a.Config.Token
+	token, err := a.Config.GenerateToken(t.Issuer, ar.Account, ar.Service, t.Expiration)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to generate token (%s)", err), http.StatusInternalServerError)
+		return
+	}
+
+	result, _ := json.Marshal(&map[string]string{"token": token})
+	logrus.Debugf("generate token: %s", string(result))
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(result)
+}
 // GET		/v1/registry/images?current_page=1&page_count=10
 // GET		/v1/registry/image/:id
 // POST		/v1/registry/image
 // PUT		/v1/registry/image/:id
 // DELETE	/v1/registry/image/:id
-// PUT		/v1/registry/image/:id/privilege?private={true|false}
+// PUT		/v1/registry/image/:id/privilege?private={1|0}
 
 // POST		/v1/registry/event
 func (a *Api) RegistryEvent(w http.ResponseWriter, r *http.Request){
@@ -78,15 +184,16 @@ func (a * Api) Run() error {
 	globalMux := http.NewServeMux()
 
 	eventRouter := mux.NewRouter()
+	eventRouter.HandleFunc("/v1/registry/auth", a.DoRegistryAuth).Methods("GET")
 	eventRouter.HandleFunc("/v1/registry/event", a.RegistryEvent).Methods("POST")
-	globalMux.Handle("/v1/registry/event", eventRouter)
+	globalMux.Handle("/v1/registry/", eventRouter)
 
 	s := &http.Server{
 		Addr: a.Listen,
 		Handler: context.ClearHandler(cs.Handler(globalMux)),
 	}
 
-	logrus.Debugf("Server run: %s", a.Listen)
+	logrus.Infof("Server run: %s", a.Listen)
 
 	return s.ListenAndServe()
 }

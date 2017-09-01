@@ -1,7 +1,7 @@
 package builtin
 
 import (
-	"github.com/cabernety/boxlinker/auth"
+	"github.com/BoxLinker/boxlinker-api/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -30,6 +30,6 @@ func (a BuiltinAuthenticator) Authenticate(username, password, hash string) (boo
 	}
 }
 
-func (a BuiltinAuthenticator) GenerateToken(uid string, username string) (string, error) {
-	return auth.GenerateToken(uid, username)
+func (a BuiltinAuthenticator) GenerateToken(uid string, username string, exp ...int64) (string, error) {
+	return auth.GenerateToken(uid, username, exp...)
 }

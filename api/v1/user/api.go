@@ -6,8 +6,8 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
-	"github.com/cabernety/boxlinker/controller/manager"
-	mAuth "github.com/cabernety/boxlinker/controller/middleware/auth"
+	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	mAuth "github.com/BoxLinker/boxlinker-api/controller/middleware/auth"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/negroni"
 )
@@ -15,22 +15,26 @@ import (
 type ApiOptions struct {
 	Listen string
 	Manager manager.Manager
+	SendEmailUri string
 }
 
 type Api struct {
 	listen string
 	manager manager.Manager
+	sendEmailUri string
 }
 
 func NewApi(config ApiOptions) *Api {
 	return &Api{
 		listen: config.Listen,
 		manager: config.Manager,
+		sendEmailUri: config.SendEmailUri,
 	}
 }
 // get 	/v1/user/auth/token
 // post /v1/user/auth/login
 // post	/v1/user/auth/reg
+// get	/v1/user/auth/confirm_email?confirm_token=
 // put	/v1/user/account/list
 // put	/v1/user/account/:id/changepassword
 // get	/v1/user/account/:id
@@ -46,8 +50,10 @@ func (a *Api) Run() error {
 	globalMux := http.NewServeMux()
 
 	loginRegRouter := mux.NewRouter()
+	loginRegRouter.HandleFunc("/v1/user/auth/basicAuth", a.BasicAuth).Methods("GET")
 	loginRegRouter.HandleFunc("/v1/user/auth/login", a.Login).Methods("POST")
 	loginRegRouter.HandleFunc("/v1/user/auth/reg", a.Reg).Methods("POST")
+	loginRegRouter.HandleFunc("/v1/user/auth/confirm_email", a.ConfirmEmail).Methods("GET")
 	globalMux.Handle("/v1/user/auth/", loginRegRouter)
 
 	accountRouter := mux.NewRouter()
