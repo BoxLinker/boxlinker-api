@@ -5,3 +5,7 @@ token:
   expiration: 900
   certificate: "./root.crt"
   key: "./private_key.pem"
+acl:
+- match: {account: "admin"}
+    actions: ["*"]
+    comment: "Admin has full access to everything."

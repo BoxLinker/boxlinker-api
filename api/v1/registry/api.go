@@ -14,14 +14,64 @@ import (
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/tools"
 	"strings"
 	"sort"
+	"github.com/BoxLinker/boxlinker-api/pkg/registry/authz"
+	"time"
 )
 
 type Api struct {
 	Listen string
 	Manager manager.RegistryManager
 	Authenticator authn.Authenticator
-	Config *tools.Config
+	Authorizers []authz.Authorizer
+	Config *Config
 }
+type ApiConfig struct {
+	Listen string
+	Manager manager.RegistryManager
+	Config *tools.Config
+	BasicAuthURL string
+	ConfigFilePath string
+}
+func NewApi(ac *ApiConfig) (*Api, error) {
+
+	config, err := LoadConfig(ac.ConfigFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	a := &Api{
+		Listen: ac.Listen,
+		Manager: ac.Manager,
+		Config: config,
+		Authorizers: []authz.Authorizer{},
+	}
+	// authenticator
+	a.Authenticator = &authn.DefaultAuthenticator{
+		BasicAuthURL: ac.BasicAuthURL,
+	}
+
+
+	// authorizes
+	if ac.Config.ACL != nil {
+		staticAuthorizer, err := authz.NewACLAuthorizer(ac.Config.ACL)
+		if err != nil {
+			return nil, err
+		}
+		a.Authorizers = append(a.Authorizers, staticAuthorizer)
+	}
+
+	mysqlAuthorizer, err := authz.NewACLMysqlAuthorizer(authz.ACLMysqlConfig{
+		Manager: ac.Manager,
+		CacheTTL: time.Second * 60,
+	})
+	if err != nil {
+		return nil, err
+	}
+	a.Authorizers = append(a.Authorizers, mysqlAuthorizer)
+
+	return a, nil
+}
+
 
 type RegistryCallback struct {
 	Events [] struct{
@@ -55,6 +105,11 @@ type authScope struct {
 	Type string
 	Name string
 	Actions []string
+}
+
+type authzResult struct {
+	scope authScope
+	authorizedActions []string
 }
 
 type authRequest struct {
@@ -113,9 +168,48 @@ func prepareRequest(r *http.Request) (*authRequest, error) {
 	return ar, nil
 }
 
+func (a *Api) authorizeScope(ai *authz.AuthRequestInfo) ([]string, error) {
+
+	for i, authorizer := range a.Authorizers {
+		result, err := authorizer.Authorize(ai)
+		logrus.Infof("Authz %s %s -> %s, %s", authorizer.Name(), *ai, result, err)
+		if err != nil {
+			if err == authz.NoMatch {
+				continue
+			}
+			err = fmt.Errorf("authz #%d returned error: %s", i+1, err)
+			logrus.Errorf("%s: %s", *ai, err)
+			return nil, err
+		}
+		return result, nil
+	}
+	logrus.Warningf("%s did not match any authz rule", *ai)
+	return nil, nil
+}
+
+func (a *Api) authorize(ar *authRequest) ([]authzResult, error) {
+	ares := []authzResult{}
+	for _, scope := range ar.Scopes {
+		ai := &authz.AuthRequestInfo{
+			Account: ar.Account,
+			Type: scope.Type,
+			Name: scope.Name,
+			Service: ar.Service,
+			Actions: scope.Actions,
+		}
+		actions, err := a.authorizeScope(ai)
+		if err != nil {
+			return nil, err
+		}
+		ares = append(ares, authzResult{scope: scope, authorizedActions: actions})
+	}
+	return ares, nil
+}
+
 // POST 	/v1/registry/auth
 func (a *Api) DoRegistryAuth(w http.ResponseWriter, r *http.Request){
 	ar, err := prepareRequest(r)
+	ares := []authzResult{}
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Bad Request: %s", err), http.StatusBadRequest)
 		return
@@ -134,11 +228,18 @@ func (a *Api) DoRegistryAuth(w http.ResponseWriter, r *http.Request){
 	}
 
 	// authorize based on scopes
-
-
+	if len(ar.Scopes) > 0 {
+		ares, err = a.authorize(ar)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Authorization failed (%s)", err), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		// Authentication-only request ("docker login"), pass through.
+	}
 
 	t := &a.Config.Token
-	token, err := a.Config.GenerateToken(t.Issuer, ar.Account, ar.Service, t.Expiration)
+	token, err := a.Config.GenerateToken(t.Issuer, ar.Account, ar.Service, t.Expiration, ares)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to generate token (%s)", err), http.StatusInternalServerError)
 		return

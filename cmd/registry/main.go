@@ -13,6 +13,7 @@ import (
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/authn"
 	"errors"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/tools"
+	"github.com/BoxLinker/boxlinker-api/pkg/registry/authz"
 )
 
 var flags = []cli.Flag{
@@ -54,10 +55,10 @@ func action(c *cli.Context) error {
 		return errors.New("no config file provided")
 	}
 
-	config, err := tools.LoadConfig(configFilePath)
-	if err != nil {
-		return err
-	}
+	//config, err := tools.LoadConfig(configFilePath)
+	//if err != nil {
+	//	return err
+	//}
 
 	basicAuthURL := c.String("basic-auth-url")
 	if len(basicAuthURL) == 0 {
@@ -74,16 +75,15 @@ func action(c *cli.Context) error {
 		return fmt.Errorf("new controller manager err: %v", err)
 	}
 
-	// authenticator
-	authenticator := &authn.DefaultAuthenticator{
-		BasicAuthURL: basicAuthURL,
-	}
 
-	a := &api.Api{
+	a, err := api.NewApi(&api.ApiConfig{
 		Listen: c.String("listen"),
 		Manager: controllerManager,
-		Authenticator: authenticator,
 		Config: config,
+		ConfigFilePath: configFilePath,
+	})
+	if err != nil {
+		return err
 	}
 
 	return fmt.Errorf("Run Api err: %v", a.Run())

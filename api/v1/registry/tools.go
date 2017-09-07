@@ -1,4 +1,4 @@
-package tools
+package registry
 
 import (
 	"io/ioutil"
@@ -14,8 +14,8 @@ import (
 	"math/rand"
 	"encoding/base64"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/authz"
+	"sort"
 )
-
 
 type Config struct {
 	Server struct {
@@ -33,7 +33,7 @@ type Config struct {
 	ACL authz.ACL `yaml:"acl,omitempty"`
 }
 
-func (c *Config) GenerateToken(issuer, subject, audience string, expiration int64, t, name string,  actions []string) (string, error) {
+func (c *Config) GenerateToken(issuer, subject, audience string, expiration int64, ares []authzResult) (string, error) {
 	now := time.Now().Unix()
 	_, sigAlg, err := c.Token.privateKey.Sign(strings.NewReader("dummy"), 0)
 	if err != nil {
@@ -58,7 +58,18 @@ func (c *Config) GenerateToken(issuer, subject, audience string, expiration int6
 		JWTID:      fmt.Sprintf("%d", rand.Int63()),
 		Access:     []*token.ResourceActions{},
 	}
-
+	for _, a := range ares {
+		ra := &token.ResourceActions{
+			Type:    a.scope.Type,
+			Name:    a.scope.Name,
+			Actions: a.authorizedActions,
+		}
+		if ra.Actions == nil {
+			ra.Actions = []string{}
+		}
+		sort.Strings(ra.Actions)
+		claims.Access = append(claims.Access, ra)
+	}
 	claimsJSON, err := json.Marshal(claims)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal claims: %s", err)
@@ -116,3 +127,4 @@ func LoadConfig(cPath string) (*Config, error) {
 	}
 	return c, nil
 }
+
