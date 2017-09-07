@@ -10,10 +10,7 @@ import (
 	"fmt"
 	"github.com/BoxLinker/boxlinker-api/controller/models"
 	"github.com/BoxLinker/boxlinker-api/controller/manager"
-	"github.com/BoxLinker/boxlinker-api/pkg/registry/authn"
 	"errors"
-	"github.com/BoxLinker/boxlinker-api/pkg/registry/tools"
-	"github.com/BoxLinker/boxlinker-api/pkg/registry/authz"
 )
 
 var flags = []cli.Flag{
@@ -55,11 +52,6 @@ func action(c *cli.Context) error {
 		return errors.New("no config file provided")
 	}
 
-	//config, err := tools.LoadConfig(configFilePath)
-	//if err != nil {
-	//	return err
-	//}
-
 	basicAuthURL := c.String("basic-auth-url")
 	if len(basicAuthURL) == 0 {
 		return errors.New("basic-auth-url is required")
@@ -79,8 +71,8 @@ func action(c *cli.Context) error {
 	a, err := api.NewApi(&api.ApiConfig{
 		Listen: c.String("listen"),
 		Manager: controllerManager,
-		Config: config,
 		ConfigFilePath: configFilePath,
+		BasicAuthURL: basicAuthURL,
 	})
 	if err != nil {
 		return err

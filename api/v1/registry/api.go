@@ -10,12 +10,13 @@ import (
 	"github.com/Sirupsen/logrus"
 	"encoding/json"
 	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	//registryModels "github.com/BoxLinker/boxlinker-api/controller/models/registry"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/authn"
-	"github.com/BoxLinker/boxlinker-api/pkg/registry/tools"
 	"strings"
 	"sort"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/authz"
 	"time"
+	"net"
 )
 
 type Api struct {
@@ -28,7 +29,6 @@ type Api struct {
 type ApiConfig struct {
 	Listen string
 	Manager manager.RegistryManager
-	Config *tools.Config
 	BasicAuthURL string
 	ConfigFilePath string
 }
@@ -50,10 +50,17 @@ func NewApi(ac *ApiConfig) (*Api, error) {
 		BasicAuthURL: ac.BasicAuthURL,
 	}
 
+	//if err := ac.Manager.SaveACL(&registryModels.ACL{
+	//	Account: "*",
+	//	Name: "library/*",
+	//	Actions: "*",
+	//}); err != nil {
+	//	return nil, err
+	//}
 
 	// authorizes
-	if ac.Config.ACL != nil {
-		staticAuthorizer, err := authz.NewACLAuthorizer(ac.Config.ACL)
+	if config.ACL != nil {
+		staticAuthorizer, err := authz.NewACLAuthorizer(config.ACL)
 		if err != nil {
 			return nil, err
 		}
@@ -113,11 +120,15 @@ type authzResult struct {
 }
 
 type authRequest struct {
-	User string
-	Password authn.PasswordString
-	Account string
-	Service string
-	Scopes []authScope
+	RemoteConnAddr string
+	RemoteAddr     string
+	RemoteIP       net.IP
+	User           string
+	Password       authn.PasswordString
+	Account        string
+	Service        string
+	Scopes         []authScope
+	Labels         authn.Labels
 }
 
 
@@ -172,7 +183,7 @@ func (a *Api) authorizeScope(ai *authz.AuthRequestInfo) ([]string, error) {
 
 	for i, authorizer := range a.Authorizers {
 		result, err := authorizer.Authorize(ai)
-		logrus.Infof("Authz %s %s -> %s, %s", authorizer.Name(), *ai, result, err)
+		logrus.Infof("Authz %s %s -> %s, %v", authorizer.Name(), *ai, result, err)
 		if err != nil {
 			if err == authz.NoMatch {
 				continue
@@ -226,7 +237,6 @@ func (a *Api) DoRegistryAuth(w http.ResponseWriter, r *http.Request){
 		http.Error(w, "Auth Failed.", http.StatusUnauthorized)
 		return
 	}
-
 	// authorize based on scopes
 	if len(ar.Scopes) > 0 {
 		ares, err = a.authorize(ar)
@@ -238,8 +248,8 @@ func (a *Api) DoRegistryAuth(w http.ResponseWriter, r *http.Request){
 		// Authentication-only request ("docker login"), pass through.
 	}
 
-	t := &a.Config.Token
-	token, err := a.Config.GenerateToken(t.Issuer, ar.Account, ar.Service, t.Expiration, ares)
+	//t := &a.Config.Token
+	token, err := a.Config.GenerateToken(ar, ares)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to generate token (%s)", err), http.StatusInternalServerError)
 		return

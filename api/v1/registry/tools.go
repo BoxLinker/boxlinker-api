@@ -15,6 +15,7 @@ import (
 	"encoding/base64"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/authz"
 	"sort"
+	"github.com/Sirupsen/logrus"
 )
 
 type Config struct {
@@ -33,7 +34,9 @@ type Config struct {
 	ACL authz.ACL `yaml:"acl,omitempty"`
 }
 
-func (c *Config) GenerateToken(issuer, subject, audience string, expiration int64, ares []authzResult) (string, error) {
+func (c *Config) GenerateToken(ar *authRequest, ares []authzResult) (string, error) {
+	logrus.Debugf("GenerateToken: issuer: %s, subject: %s, audience: %s, ares: %+v",
+		c.Token.Issuer, ar.Account, ar.Service, ares)
 	now := time.Now().Unix()
 	_, sigAlg, err := c.Token.privateKey.Sign(strings.NewReader("dummy"), 0)
 	if err != nil {
@@ -49,12 +52,12 @@ func (c *Config) GenerateToken(issuer, subject, audience string, expiration int6
 		return "", fmt.Errorf("failed to marshal header: %s", err)
 	}
 	claims := token.ClaimSet{
-		Issuer:     issuer,
-		Subject:    subject,
-		Audience:   audience,
+		Issuer:     c.Token.Issuer,
+		Subject:    ar.Account,
+		Audience:   ar.Service,
 		NotBefore:  now - 10,
 		IssuedAt:   now,
-		Expiration: now + expiration,
+		Expiration: now + c.Token.Expiration,
 		JWTID:      fmt.Sprintf("%d", rand.Int63()),
 		Access:     []*token.ResourceActions{},
 	}
@@ -81,6 +84,7 @@ func (c *Config) GenerateToken(issuer, subject, audience string, expiration int6
 	if err != nil || sigAlg2 != sigAlg {
 		return "", fmt.Errorf("failed to sign token: %s", err)
 	}
+	logrus.Infof("New token for %s %+v: %s", *ar, ar.Labels, claimsJSON)
 	return fmt.Sprintf("%s%s%s", payload, token.TokenSeparator, joseBase64UrlEncode(sig)), nil
 }
 

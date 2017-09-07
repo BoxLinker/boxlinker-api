@@ -13,7 +13,7 @@ http:
     addr: :5001
 auth:
   token:
-    realm: http://10.14.22.26:8082/v1/registry/auth
+    realm: http://10.0.105.140:8082/v1/registry/auth
     service: "Local Registry Server"
     issuer: "Local Registry Auth Service"
     rootcertbundle: /etc/registry/root.crt

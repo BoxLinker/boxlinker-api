@@ -6,6 +6,7 @@ import (
 	"time"
 	"net/http"
 	"fmt"
+	"github.com/Sirupsen/logrus"
 )
 
 type Labels map[string][]string
@@ -35,8 +36,10 @@ type DefaultAuthenticator struct {
 func (auth *DefaultAuthenticator) Authenticate(user string, password PasswordString)(bool, Labels, error){
 	resp, err := httplib.Get(auth.BasicAuthURL).SetBasicAuth(user, string(password)).SetTimeout(time.Second*5, time.Second*10).Response()
 	if err != nil {
+		logrus.Errorf("basic auth err: ", err)
 		return false, nil, err
 	}
+	logrus.Debugf("basic auth resp: %d", resp.StatusCode)
 	if resp.StatusCode == http.StatusOK {
 		return true, nil, nil
 	} else if resp.StatusCode == http.StatusUnauthorized {

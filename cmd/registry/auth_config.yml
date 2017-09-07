@@ -6,6 +6,12 @@ token:
   certificate: "./root.crt"
   key: "./private_key.pem"
 acl:
-- match: {account: "admin"}
-    actions: ["*"]
+  - match: {account: "admin"}
+    actions: ["*"]   #如果写 push 了，pull 就必须也写上
     comment: "Admin has full access to everything."
+  - match: {account: "/.+/", name: "${account}/*"}
+    actions: ["*"]
+    comment: "Logged in users have full access to images that are in their 'namespace'"
+  - match: {account: "*",name: "library/*"}
+    actions: ["pull"]
+    comment: "Logged in users can query the catalog."

@@ -82,17 +82,33 @@ func (ma *ACLMysqlAuthorizer) updateACLCache() error {
 		return err
 	}
 	for _, a := range acls {
+		cond := MatchConditions{
+			Account: &a.Account,
+			Name: &a.Name,
+			Type: &a.Type,
+			Service: &a.Service,
+			IP: &a.IP,
+		}
+		if a.Account == "" {
+			cond.Account = nil
+		}
+		if a.Name == "" {
+			cond.Name = nil
+		}
+		if a.Type == "" {
+			cond.Type = nil
+		}
+		if a.Service == "" {
+			cond.Service = nil
+		}
+		if a.IP == "" {
+			cond.IP = nil
+		}
 		newACL = append(newACL, MysqlACLEntry{
 			ACLEntry: ACLEntry{
 				Actions: &a.ActionsArray,
 				Comment: &a.Comment,
-				Match: &MatchConditions{
-					Account: &a.Account,
-					Name: &a.Name,
-					Type: &a.Type,
-					Service: &a.Service,
-					IP: &a.IP,
-				},
+				Match: &cond,
 			},
 		})
 	}
@@ -100,6 +116,7 @@ func (ma *ACLMysqlAuthorizer) updateACLCache() error {
 	for _, e := range newACL {
 		retACL = append(retACL, e.ACLEntry)
 	}
+	logrus.Debugf("Get all acl: %v", retACL)
 	newStaticAuthorizer, err := NewACLAuthorizer(retACL)
 	if err != nil {
 		return err

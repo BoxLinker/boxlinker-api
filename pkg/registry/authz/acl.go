@@ -11,6 +11,7 @@ import (
 	"path"
 	"github.com/cesanta/glog"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/authn"
+	"encoding/json"
 )
 
 type ACL []ACLEntry
@@ -28,6 +29,11 @@ type MatchConditions struct {
 	IP      *string           `yaml:"ip,omitempty" json:"ip,omitempty"`
 	Service *string           `yaml:"service,omitempty" json:"service,omitempty"`
 	Labels  map[string]string `yaml:"labels,omitempty" json:"labels,omitempty"`
+}
+
+func (e ACLEntry) String() string {
+	b, _ := json.Marshal(e)
+	return string(b)
 }
 
 func validatePattern(p string) error {
@@ -109,7 +115,7 @@ func (aa *aclAuthorizer) Authorize(ai *AuthRequestInfo) ([]string, error) {
 	for _, e := range aa.acl {
 		matched := e.Matches(ai)
 		if matched {
-			logrus.Infof("%s matched %s (Comment: %s)", ai, e, e.Comment)
+			logrus.Infof("%s matched %s (Comment: %s)", ai, e, *e.Comment)
 			if len(*e.Actions) == 1 && (*e.Actions)[0] == "*" {
 				return ai.Actions, nil
 			}
