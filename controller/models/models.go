@@ -11,13 +11,13 @@ import (
 	"github.com/urfave/cli"
 )
 
-var (
-	tables []interface{}
-)
-
-func init(){
-	tables = append(tables, new(User), new(UserToBeConfirmed))
-}
+//var (
+//	tables []interface{}
+//)
+//
+//func init(){
+//	tables = append(tables, new(User), new(UserToBeConfirmed))
+//}
 
 
 type DBOptions struct {
@@ -38,9 +38,9 @@ func GetDBOptions(c *cli.Context) DBOptions {
 	}
 }
 
-func NewEngine(config DBOptions, t ...[]interface{}) (*xorm.Engine, error){
+func NewEngine(config DBOptions, t []interface{}) (*xorm.Engine, error){
 	var Param string = "?"
-	var _tables []interface{}
+	//var _tables []interface{}
 	if strings.Contains(config.Name, Param) {
 		Param = "&"
 	}
@@ -59,12 +59,12 @@ func NewEngine(config DBOptions, t ...[]interface{}) (*xorm.Engine, error){
 	log.Info("Connect to db ok.")
 	x.SetMapper(core.GonicMapper{})
 	log.Infof("start to sync tables ...")
-	if len(t) > 0 {
-		_tables = t[0]
-	} else {
-		_tables = tables
-	}
-	if err = x.StoreEngine("InnoDB").Sync2(_tables...); err != nil {
+	//if len(t) > 0 {
+	//	_tables = t[0]
+	//} else {
+	//	_tables = tables
+	//}
+	if err = x.StoreEngine("InnoDB").Sync2(t...); err != nil {
 		return nil, fmt.Errorf("sync tables err: %v",err)
 	}
 	x.ShowSQL(true)

@@ -31,6 +31,9 @@ type Config struct {
 		privateKey libtrust.PrivateKey
 		publicKey  libtrust.PublicKey
 	} `yaml:"token,omitempty"`
+	Auth struct{
+		Url string `yaml:"url,omitempty"`
+	} `yaml:"auth,omitempty"`
 	ACL authz.ACL `yaml:"acl,omitempty"`
 }
 

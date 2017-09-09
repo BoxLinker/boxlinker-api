@@ -7,6 +7,10 @@ import (
 	"encoding/json"
 )
 
+func ParsePageConfig(r *http.Request) PageConfig {
+	return ParseHTTPQuery(r)
+}
+
 func ParseHTTPQuery(r *http.Request) PageConfig {
 	q := r.URL.Query()
 	current_pageS := q.Get("current_page")

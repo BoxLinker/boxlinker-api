@@ -6,17 +6,17 @@ import (
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"fmt"
-	"io/ioutil"
 	"github.com/Sirupsen/logrus"
 	"encoding/json"
 	"github.com/BoxLinker/boxlinker-api/controller/manager"
-	//registryModels "github.com/BoxLinker/boxlinker-api/controller/models/registry"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/authn"
+	tAuth "github.com/BoxLinker/boxlinker-api/controller/middleware/auth_token"
 	"strings"
 	"sort"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/authz"
 	"time"
 	"net"
+	"github.com/codegangsta/negroni"
 )
 
 type Api struct {
@@ -260,30 +260,7 @@ func (a *Api) DoRegistryAuth(w http.ResponseWriter, r *http.Request){
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(result)
 }
-// GET		/v1/registry/images?current_page=1&page_count=10
-// GET		/v1/registry/image/:id
-// POST		/v1/registry/image
-// PUT		/v1/registry/image/:id
-// DELETE	/v1/registry/image/:id
-// PUT		/v1/registry/image/:id/privilege?private={1|0}
 
-// POST		/v1/registry/event
-func (a *Api) RegistryEvent(w http.ResponseWriter, r *http.Request){
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("read body: %v", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	events := &RegistryCallback{}
-	if err := json.Unmarshal(b, events); err != nil {
-		http.Error(w, fmt.Sprintf("Unmarshal body: %v", err.Error()), http.StatusInternalServerError)
-		return
-	}
-	// 确认镜像以及 tag 是否存在，如果不存在创建镜像记录
-	// 创建 image:tag action 记录
-
-	fmt.Printf("r.Body:>\n %+v", events)
-}
 
 func (a * Api) Run() error {
 	cs := cors.New(cors.Options{
@@ -291,13 +268,34 @@ func (a * Api) Run() error {
 		AllowedMethods: []string{"GET", "POST", "DELETE", "PUT", "OPTIONS"},
 		AllowedHeaders: []string{"Origin", "Content-Type", "Accept", "token", "X-Requested-With", "X-Access-Token"},
 	})
+	// middleware
+	apiAuthRequired := tAuth.NewAuthTokenRequired(a.Config.Auth.Url)
 
 	globalMux := http.NewServeMux()
 
 	eventRouter := mux.NewRouter()
-	eventRouter.HandleFunc("/v1/registry/auth", a.DoRegistryAuth).Methods("GET")
-	eventRouter.HandleFunc("/v1/registry/event", a.RegistryEvent).Methods("POST")
-	globalMux.Handle("/v1/registry/", eventRouter)
+	eventRouter.HandleFunc("/v1/registry/callback/auth", a.DoRegistryAuth).Methods("GET")
+	eventRouter.HandleFunc("/v1/registry/callback/event", a.RegistryEvent).Methods("POST")
+	globalMux.Handle("/v1/registry/callback/", eventRouter)
+
+	imageRouter := mux.NewRouter()
+	imageRouter.HandleFunc("/v1/registry/auth/image/list", a.QueryImages).Methods("GET")
+	imageRouter.HandleFunc("/v1/registry/auth/image/exists", a.ImageExists).Methods("GET")
+	imageRouter.HandleFunc("/v1/registry/auth/image/new", a.SaveImage).Methods("POST")
+	imageRouter.HandleFunc("/v1/registry/auth/image/{id}", a.GetImage).Methods("GET")
+	imageRouter.HandleFunc("/v1/registry/auth/image/{id}/description", a.UpdateImageDescription).Methods("PUT")
+	imageRouter.HandleFunc("/v1/registry/auth/image/{id}/html_doc", a.UpdateImageHtmlDoc).Methods("PUT")
+	imageRouter.HandleFunc("/v1/registry/auth/image/{id}/privilege", a.UpdateImagePrivilege).Methods("PUT")
+	imageRouter.HandleFunc("/v1/registry/auth/image/{id}", a.DeleteImage).Methods("DELETE")
+	imageAuthRouter := negroni.New()
+	imageAuthRouter.Use(negroni.HandlerFunc(apiAuthRequired.HandlerFuncWithNext))
+	imageAuthRouter.UseHandler(imageRouter)
+	globalMux.Handle("/v1/registry/auth/", imageAuthRouter)
+
+	imagePubRouter := mux.NewRouter()
+	imagePubRouter.HandleFunc("/v1/registry/pub/image/list", a.QueryPubImages).Methods("GET")
+	globalMux.Handle("/v1/registry/pub/", imagePubRouter)
+
 
 	s := &http.Server{
 		Addr: a.Listen,

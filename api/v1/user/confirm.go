@@ -3,7 +3,7 @@ package user
 import (
 	"net/http"
 	"github.com/BoxLinker/boxlinker-api/auth"
-	"github.com/BoxLinker/boxlinker-api/controller/models"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	"github.com/Sirupsen/logrus"
 )
 
@@ -38,7 +38,7 @@ func (a *Api) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u1 := &models.User{
+	u1 := &userModels.User{
 		Name: u.Name,
 		Email: u.Email,
 		Password: u.Password,

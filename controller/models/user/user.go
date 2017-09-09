@@ -1,4 +1,4 @@
-package models
+package user
 
 import (
 	"time"
@@ -16,6 +16,12 @@ type User struct {
 	CreatedUnix int64
 	Updated     time.Time `xorm:"-"`
 	UpdatedUnix int64
+}
+
+func Tables() []interface{} {
+	var tables []interface{}
+	tables = append(tables, new(User), new(UserToBeConfirmed))
+	return tables
 }
 
 func (me *User) BeforeInsert() {

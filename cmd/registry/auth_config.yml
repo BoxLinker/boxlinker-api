@@ -5,6 +5,8 @@ token:
   expiration: 900
   certificate: "./root.crt"
   key: "./private_key.pem"
+auth:
+  url: "http://127.0.0.1:8080/v1/user/account/authToken"
 acl:
   - match: {account: "admin"}
     actions: ["*"]   #如果写 push 了，pull 就必须也写上

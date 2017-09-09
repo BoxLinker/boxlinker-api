@@ -11,6 +11,8 @@ import (
 	settings "github.com/BoxLinker/boxlinker-api/settings/user"
 	"fmt"
 	"github.com/BoxLinker/boxlinker-api/cmd"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
+	"github.com/BoxLinker/boxlinker-api/controller/models"
 )
 
 var (
@@ -87,14 +89,19 @@ func action(c *cli.Context) error {
 
 	authenticator := builtin.NewAuthenticator()
 
-	controllerManager, err := manager.NewManager(manager.ManagerOptions{
-		Authenticator:	authenticator,
-		DBUser: 		c.String("db-user"),
-		DBPassword: 	c.String("db-password"),
-		DBHost: 		c.String("db-host"),
-		DBPort: 		c.Int("db-port"),
-		DBName: 		c.String("db-name"),
-	})
+	//controllerManager, err := manager.NewManager(manager.ManagerOptions{
+	//	Authenticator:	authenticator,
+	//	DBUser: 		c.String("db-user"),
+	//	DBPassword: 	c.String("db-password"),
+	//	DBHost: 		c.String("db-host"),
+	//	DBPort: 		c.Int("db-port"),
+	//	DBName: 		c.String("db-name"),
+	//})
+	engine, err := models.NewEngine(models.GetDBOptions(c), userModels.Tables())
+	if err != nil {
+		return fmt.Errorf("new db engine err: %v", err)
+	}
+	controllerManager, err := manager.NewUserManager(engine, authenticator)
 
 	if err != nil {
 		return fmt.Errorf("New Manager: %s", err.Error())

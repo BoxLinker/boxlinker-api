@@ -17,11 +17,6 @@ func NewAuthRequired(m manager.Manager) *AuthRequired {
 	}
 }
 
-//func (a *AuthRequired) handleRequest(w http.ResponseWriter, r *http.Request) (map[string]) {
-//
-//	return nil
-//}
-
 func (a *AuthRequired) HandlerFuncWithNext(w http.ResponseWriter, r *http.Request, next http.HandlerFunc){
 	//err := a.handleRequest(w, r)
 	token := r.Header.Get("X-Access-Token")

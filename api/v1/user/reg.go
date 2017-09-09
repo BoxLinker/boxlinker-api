@@ -3,7 +3,7 @@ package user
 import (
 	"net/http"
 	"github.com/BoxLinker/boxlinker-api"
-	"github.com/BoxLinker/boxlinker-api/controller/models"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	"regexp"
 	"fmt"
 	"github.com/BoxLinker/boxlinker-api/auth"
@@ -83,7 +83,7 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u := &models.UserToBeConfirmed{
+	u := &userModels.UserToBeConfirmed{
 		Name: form.Username,
 		Password: string(pass),
 		Email: form.Email,

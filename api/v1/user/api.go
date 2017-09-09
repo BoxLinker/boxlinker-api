@@ -14,13 +14,13 @@ import (
 
 type ApiOptions struct {
 	Listen string
-	Manager manager.Manager
+	Manager manager.UserManager
 	SendEmailUri string
 }
 
 type Api struct {
 	listen string
-	manager manager.Manager
+	manager manager.UserManager
 	sendEmailUri string
 }
 
@@ -57,6 +57,7 @@ func (a *Api) Run() error {
 	globalMux.Handle("/v1/user/auth/", loginRegRouter)
 
 	accountRouter := mux.NewRouter()
+	accountRouter.HandleFunc("/v1/user/account/authToken", a.AuthToken).Methods("GET")
 	accountRouter.HandleFunc("/v1/user/account/list", a.GetUsers).Methods("GET")
 	accountRouter.HandleFunc("/v1/user/account/changepassword", a.ChangePassword).Methods("PUT")
 	accountRouter.HandleFunc("/v1/user/account/userinfo", a.GetUser).Methods("GET")
