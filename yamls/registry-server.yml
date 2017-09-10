@@ -1,14 +1,14 @@
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: email
+  name: registry
   namespace: boxlinker
 spec:
   rules:
   - host: api.boxlinker.com
     http:
       paths:
-      - path: /v1/email
+      - path: /v1/registry
         backend:
           serviceName: email
           servicePort: 8080
@@ -20,27 +20,27 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: email
+  name: registry
   namespace: boxlinker
   labels:
-    app: "email"
+    app: "registry"
 spec:
   ports:
   - port: 8080
   selector:
-    app: "email"
+    app: "registry"
 ---
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: email
+  name: registry
   namespace: boxlinker
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        app: "email"
+        app: "registry"
     spec:
       imagePullSecrets:
       - name: registry-key
@@ -48,20 +48,13 @@ spec:
         role: system
       containers:
       - name: email
-        image: index.boxlinker.com/boxlinker/email-server:latest
+        image: registry.cn-beijing.aliyuncs.com/cabernety/registry-server:v1.0
         ports:
         - containerPort: 8080
-        args:
-        - /email
-        - -D
-        - --test
-        - --mail-host=smtp.exmail.qq.com:25
-        - --mail-user=service@boxlinker.com
-        - --mail-user-title=Boxlinker
-        - --mail-password=Just4fun
-        - --mail-type=html
-        - --rabbitmq-uri=amqp://guest:guest@rabbitmq:5672/
-        - --rabbitmq-exchange=email-server
-        - --rabbitmq-queue-name=email-server-queue
-        - --rabbitmq-consumer-tag=email-server
-        - --rabbitmq-binding-key=email-server-binding-key
+        volumeMounts:
+        - name: config-yaml
+          mountPath: /
+      volumes:
+      - name: config-yaml
+        secret:
+          secretName: "registry-server-config"

@@ -31,13 +31,11 @@ type ApiConfig struct {
 	Manager manager.RegistryManager
 	BasicAuthURL string
 	ConfigFilePath string
+	Config *Config
 }
 func NewApi(ac *ApiConfig) (*Api, error) {
 
-	config, err := LoadConfig(ac.ConfigFilePath)
-	if err != nil {
-		return nil, err
-	}
+	config := ac.Config
 
 	a := &Api{
 		Listen: ac.Listen,
@@ -47,8 +45,13 @@ func NewApi(ac *ApiConfig) (*Api, error) {
 	}
 	// authenticator
 	a.Authenticator = &authn.DefaultAuthenticator{
-		BasicAuthURL: ac.BasicAuthURL,
+		BasicAuthURL: a.Config.Auth.BasicAuthUrl,
 	}
+
+	// boxlinker ucenter
+	//a.Authenticator = &authn.BoxlinkerUCenterAuthenticator{
+	//	BasicAuthURL: a.Config.Auth.BasicAuthUrl,
+	//}
 
 	//if err := ac.Manager.SaveACL(&registryModels.ACL{
 	//	Account: "*",
@@ -269,7 +272,9 @@ func (a * Api) Run() error {
 		AllowedHeaders: []string{"Origin", "Content-Type", "Accept", "token", "X-Requested-With", "X-Access-Token"},
 	})
 	// middleware
-	apiAuthRequired := tAuth.NewAuthTokenRequired(a.Config.Auth.Url)
+	apiAuthRequired := tAuth.NewAuthTokenRequired(a.Config.Auth.TokenAuthUrl)
+	// boxlinker token auth
+	//apiAuthRequired := tAuth.NewBoxlinkerAuthTokenRequired(a.Config.Auth.TokenAuthUrl)
 
 	globalMux := http.NewServeMux()
 

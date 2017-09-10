@@ -7,3 +7,5 @@ npm-debug.log
 db_data
 cmd/email/email
 cmd/user/user
+cmd/registry/image-api
+vendor

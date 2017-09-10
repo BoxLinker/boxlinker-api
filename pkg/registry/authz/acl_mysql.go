@@ -42,7 +42,7 @@ func NewACLMysqlAuthorizer(config ACLMysqlConfig) (Authorizer, error) {
 		return nil, err
 	}
 
-	//go authorizer.continuouslyUpdateACLCache()
+	go authorizer.continuouslyUpdateACLCache()
 
 
 	return authorizer, nil

@@ -52,12 +52,27 @@ func action(c *cli.Context) error {
 		return errors.New("no config file provided")
 	}
 
+	config, err := api.LoadConfig(configFilePath)
+	if err != nil {
+		return err
+	}
+
+	if config.Server.Debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	basicAuthURL := c.String("basic-auth-url")
 	if len(basicAuthURL) == 0 {
 		return errors.New("basic-auth-url is required")
 	}
 
-	engine, err := models.NewEngine(models.GetDBOptions(c), registryModels.Tables())
+	engine, err := models.NewEngine(models.DBOptions{
+		User: config.DB.User,
+		Password: config.DB.Password,
+		Name: config.DB.Name,
+		Host: config.DB.Host,
+		Port: config.DB.Port,
+	}, registryModels.Tables())
 	if err != nil {
 		return fmt.Errorf("new db engine err: %v", err)
 	}
@@ -73,6 +88,7 @@ func action(c *cli.Context) error {
 		Manager: controllerManager,
 		ConfigFilePath: configFilePath,
 		BasicAuthURL: basicAuthURL,
+		Config: config,
 	})
 	if err != nil {
 		return err

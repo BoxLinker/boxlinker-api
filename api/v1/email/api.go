@@ -54,7 +54,7 @@ func (a *Api) Run() error {
 		AllowedHeaders: []string{"Origin", "Content-Type", "Accept", "token", "X-Requested-With", "X-Access-Token"},
 	})
 
-	go sendEmail(a.amqpConsumer.NotifyMsg)
+	//go sendEmail(a.amqpConsumer.NotifyMsg)
 
 	globalMux := http.NewServeMux()
 
