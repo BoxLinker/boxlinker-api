@@ -158,7 +158,7 @@ func (m DefaultUserManager) CheckAdminUser() error {
 	sess := m.engine.NewSession()
 	defer sess.Close()
 	adminUser := &userModels.User{
-		Name: "admin",
+		Name: settings.ADMIN_NAME,
 	}
 	if has, _ := sess.Get(adminUser); !has {
 		pass, err := mAuth.Hash(settings.ADMIN_PASSWORD)

@@ -57,6 +57,10 @@ func (a *Api) Login(w http.ResponseWriter, r *http.Request){
 	}
 
 	u := a.manager.GetUserByName(form.Username)
+	if u == nil {
+		boxlinker.Resp(w, boxlinker.STATUS_NOT_FOUND, nil, "user not found")
+		return
+	}
 	success, err := a.manager.VerifyUsernamePassword(form.Username, form.Password, u.Password)
 	if err != nil {
 		boxlinker.Resp(w, 1, nil, err.Error())

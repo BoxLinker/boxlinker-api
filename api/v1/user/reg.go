@@ -60,6 +60,7 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if found, err := a.manager.IsUserExists(form.Username); err != nil {
+		logrus.Errorf("err when IsUserExists(%s): %v", form.Username, err)
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
 		return
 	} else if found {
@@ -68,6 +69,7 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if found, err := a.manager.IsEmailExists(form.Email); err != nil {
+		logrus.Errorf("err when IsEmailExists(%s): %v", form.Email, err)
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
 		return
 	} else if found {
@@ -110,17 +112,21 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 							"点击这里，验证邮箱",
 				),
 	}
+	logrus.Debugf("send token auth email: %+v", eF)
 	b, err := json.Marshal(eF)
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("email form marshal err: %v", err))
 		return
 	}
+	logrus.Debugf("send email to: %s", a.sendEmailUri)
 	resp, err := httplib.Post(a.sendEmailUri).Body(b).Response()
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("send email err: %v", err))
 		return
 	}
-	status, msg, _, err := boxlinker.ParseResp(resp.Body)
+	status, msg, results, err := boxlinker.ParseResp(resp.Body)
+
+	logrus.Debugf("send email results: %d, %s, %+v, %v", status, msg, results, err)
 
 	// 发送邮件失败，删除 userToBeConfirmed
 	if status != boxlinker.STATUS_OK || err != nil {

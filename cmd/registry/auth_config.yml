@@ -4,10 +4,10 @@ server:
 token:
   issuer: "Local Registry Auth Service"
   expiration: 900
-  certificate: "./root.crt"
-  key: "./private_key.pem"
+  certificate: "/ssl/ca.crt"
+  key: "/ssl/ca.key"
 db:
-  host: "192.168.21.175"
+  host: "mysql"
   port: 3306
   user: "root"
   password: "123456"
