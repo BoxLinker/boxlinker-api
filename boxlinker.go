@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
+	"github.com/rs/cors"
 )
 
 func ParsePageConfig(r *http.Request) PageConfig {
@@ -42,3 +43,9 @@ func ReadRequestBody(r *http.Request, bean interface{}) error {
 	}
 	return nil
 }
+
+var Cors = cors.New(cors.Options{
+	AllowedOrigins: []string{"*"},
+	AllowedMethods: []string{"GET", "POST", "DELETE", "PUT", "OPTIONS"},
+	AllowedHeaders: []string{"Origin", "Content-Type", "Accept", "token", "X-Requested-With", "X-Access-Token"},
+})

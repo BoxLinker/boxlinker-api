@@ -42,9 +42,9 @@ push-email: build-email
 
 build-user:
 	cd cmd/user && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w' -o user
-	docker build -t ${IMAGE_ALIYUN_PREFIX}/${IMAGE_ID}:${IMAGE_ID_TAG} -f Dockerfile.user .
+	docker build -t ${IMAGE_ALIYUN_PREFIX}/${IMAGE_ID}:${IMAGE_USER_TAG} -f Dockerfile.user .
 
 push-user: build-user
-	docker push ${IMAGE_ALIYUN_PREFIX}/${IMAGE_ID}:${IMAGE_ID_TAG}
+	docker push ${IMAGE_ALIYUN_PREFIX}/${IMAGE_ID}:${IMAGE_USER_TAG}
 
 user: push-user

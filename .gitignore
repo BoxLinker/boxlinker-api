@@ -9,3 +9,4 @@ cmd/email/email
 cmd/user/user
 cmd/registry/image-api
 vendor
+dev/registry_data

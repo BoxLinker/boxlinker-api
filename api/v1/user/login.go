@@ -33,9 +33,12 @@ func (a *Api) BasicAuth(w http.ResponseWriter, r *http.Request) {
 	log.Debugf("user: %s, pass: %s", user, pass)
 	u := a.manager.GetUserByName(user)
 	if u == nil {
+		log.Debugf("user %s not found", user)
 		http.Error(w, "", http.StatusNotFound)
 		return
 	}
+	log.Debugf("user found (%+v)", u)
+
 	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(pass)); err != nil {
 		http.Error(w, "", http.StatusUnauthorized)
 		return

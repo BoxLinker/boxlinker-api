@@ -1,0 +1,20 @@
+server:
+  addr: ":8080"
+  debug: true
+#db:
+#  host: "mysql"
+#  port: 3306
+#  user: "root"
+#  password: "123456"
+#  name: "boxlinker"
+db:
+  host: "boxlinker.com"
+  port: 13306
+  user: "boxlinker"
+  name: "boxlinker"
+  password: "FB07ObC7xeTu"
+auth:
+  tokenAuthUrl: "https://api.boxlinker.com/v1/user/account/authToken"
+  basicAuthUrl: "https://api.boxlinker.com/v1/user/auth/basicAuth"
+k8s:
+  kubeconfig: "../../kube/config"

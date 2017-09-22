@@ -29,7 +29,7 @@ var flags = []cli.Flag{
 
 func main(){
 	app := cli.NewApp()
-	app.Name = "Boxlinker Email server"
+	app.Name = "Boxlinker Registry server"
 	app.Before = func(c *cli.Context) error {
 		if c.Bool("debug") {
 			logrus.SetLevel(logrus.DebugLevel)
