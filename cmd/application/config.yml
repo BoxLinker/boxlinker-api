@@ -16,5 +16,12 @@ db:
 auth:
   tokenAuthUrl: "https://api.boxlinker.com/v1/user/account/authToken"
   basicAuthUrl: "https://api.boxlinker.com/v1/user/auth/basicAuth"
-k8s:
-  kubeconfig: "../../kube/config"
+podConfigure:
+- memory: "64Mi"
+  cpu: "200"
+- memory: "128Mi"
+  cpu: "400"
+- memory: "256Mi"
+  cpu: "800"
+- memory: "512Mi"
+  cpu: "1000"

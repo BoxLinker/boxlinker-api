@@ -48,3 +48,6 @@ push-user: build-user
 	docker push ${IMAGE_ALIYUN_PREFIX}/${IMAGE_ID}:${IMAGE_USER_TAG}
 
 user: push-user
+
+minikube:
+	minikube start --kubernetes-version=v1.6.0 --extra-config=kubelet.PodInfraContainerImage="registry.cn-beijing.aliyuncs.com/cabernety/pause-amd64:3.0" --registry-mirror="2h3po24q.mirror.aliyuncs.com"

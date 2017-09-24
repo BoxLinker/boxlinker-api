@@ -251,6 +251,7 @@ func (a *Api) DoRegistryAuth(w http.ResponseWriter, r *http.Request){
 		// Authentication-only request ("docker login"), pass through.
 	}
 
+	logrus.Debugf("Ares: (%+v)", ares)
 	//t := &a.Config.Token
 	token, err := a.Config.GenerateToken(ar, ares)
 	if err != nil {

@@ -7,6 +7,7 @@ import (
 	"github.com/BoxLinker/boxlinker-api/controller/manager"
 	tAuth "github.com/BoxLinker/boxlinker-api/controller/middleware/auth_token"
 	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
+	appModels "github.com/BoxLinker/boxlinker-api/controller/models/application"
 	"net/http"
 	"github.com/Sirupsen/logrus"
 	"github.com/BoxLinker/boxlinker-api"
@@ -29,11 +30,16 @@ type ApiConfig struct {
 }
 
 func NewApi(config ApiConfig) (*Api, error) {
-	return &Api{
+	aApi := &Api{
 		config: config.Config,
 		manager: config.ControllerManager,
 		clientSet: config.ClientSet,
-	}, nil
+	}
+	// check PodConfigure
+	if err := aApi.checkPodConfigure(); err != nil {
+		return nil, err
+	}
+	return aApi, nil
 }
 
 type Config struct {
@@ -52,9 +58,10 @@ type Config struct {
 		TokenAuthUrl string `yaml:"tokenAuthUrl,omitempty"`
 		BasicAuthUrl string `yaml:"basicAuthUrl,omitempty"`
 	} `yaml:"auth,omitempty"`
-	K8S struct{
-		KubeConfig string `yaml:"kubeconfig"`
-	} `yaml:"k8s"`
+	PodConfigure []struct{
+		Memory string `yaml:"memory,omitempty"`
+		CPU string `yaml:"cpu,omitempty"`
+	} `yaml:"podConfigure,omitempty"`
 }
 
 func LoadConfig(cPath string) (*Config, error) {
@@ -71,6 +78,23 @@ func LoadConfig(cPath string) (*Config, error) {
 	return c, nil
 }
 
+func (a *Api) checkPodConfigure() error {
+	configs := a.config.PodConfigure
+	podConfigures := make([]*appModels.PodConfigure, 0)
+	for _, c := range configs {
+		podConfigures = append(podConfigures, &appModels.PodConfigure{
+			Memory: c.Memory,
+			CPU: c.CPU,
+		})
+	}
+	nums, err := a.manager.SyncPodConfigure(podConfigures)
+	if err != nil {
+		return err
+	}
+	logrus.Debugf("Sync PodConfigures %d", nums)
+	return nil
+}
+
 func (a *Api) Run() error {
 	cs := boxlinker.Cors
 	// middleware
@@ -80,6 +104,10 @@ func (a *Api) Run() error {
 
 	serviceRouter := mux.NewRouter()
 	serviceRouter.HandleFunc("/v1/application/auth/service", a.CreateService).Methods("POST")
+	serviceRouter.HandleFunc("/v1/application/auth/service", a.QueryService).Methods("GET")
+	serviceRouter.HandleFunc("/v1/application/auth/service/{name}", a.UpdateService).Methods("PUT")
+	serviceRouter.HandleFunc("/v1/application/auth/service/{name}", a.DeleteService).Methods("DELETE")
+	serviceRouter.HandleFunc("/v1/application/auth/service/{name}/exists", a.IsServiceExist).Methods("GET")
 
 	authRouter := negroni.New()
 	authRouter.Use(negroni.HandlerFunc(apiAuthRequired.HandlerFuncWithNext))

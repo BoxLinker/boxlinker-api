@@ -71,11 +71,11 @@ func action(c *cli.Context) error {
 	}
 	logrus.Infof("kubeconfig (%+v)", k8sConfig)
 	// create the clientset
-	clientset, err := kubernetes.NewForConfig(k8sConfig)
+	clientSet, err := kubernetes.NewForConfig(k8sConfig)
 	if err != nil {
 		panic(err.Error())
 	}
-	info, err := clientset.ServerVersion()
+	info, err := clientSet.ServerVersion()
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func action(c *cli.Context) error {
 		return fmt.Errorf("new db engine err: %v", err)
 	}
 
-	controllerManager, err := manager.NewApplicationManager(engine)
+	controllerManager, err := manager.NewApplicationManager(engine, clientSet)
 	if err != nil {
 		return fmt.Errorf("new controller manager err: %v", err)
 	}
@@ -100,7 +100,7 @@ func action(c *cli.Context) error {
 	appApi, err := api.NewApi(api.ApiConfig{
 		Config: config,
 		ControllerManager: controllerManager,
-		ClientSet: clientset,
+		ClientSet: clientSet,
 	})
 
 	if err != nil {

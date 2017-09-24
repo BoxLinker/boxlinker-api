@@ -5,6 +5,7 @@ docs/docs
 npm-debug.log
 *.pyc
 db_data
+ceph_data
 cmd/email/email
 cmd/user/user
 cmd/registry/image-api
