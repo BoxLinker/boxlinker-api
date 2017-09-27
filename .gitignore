@@ -9,5 +9,6 @@ ceph_data
 cmd/email/email
 cmd/user/user
 cmd/registry/image-api
+cmd/application/application
 vendor
 dev/registry_data

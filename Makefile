@@ -14,6 +14,10 @@ IMAGE_REGISTRY_TAG=v1.0
 IMAGE_USER=user-server
 IMAGE_USER_TAG=v1.0
 
+IMAGE_APP=application-server
+IMAGE_APP_TAG=v1.0
+
+
 
 db:
 	docker rm -f boxlinker-db-test || true
@@ -48,6 +52,13 @@ push-user: build-user
 	docker push ${IMAGE_ALIYUN_PREFIX}/${IMAGE_ID}:${IMAGE_USER_TAG}
 
 user: push-user
+
+build-application:
+	cd cmd/application && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w' -o application
+	docker build -t ${IMAGE_ALIYUN_PREFIX}/${IMAGE_APP}:${IMAGE_APP_TAG} -f Dockerfile.application .
+
+application: build-application
+	docker push ${IMAGE_ALIYUN_PREFIX}/${IMAGE_APP}:${IMAGE_APP_TAG}
 
 minikube:
 	minikube start --kubernetes-version=v1.6.0 --extra-config=kubelet.PodInfraContainerImage="registry.cn-beijing.aliyuncs.com/cabernety/pause-amd64:3.0" --registry-mirror="2h3po24q.mirror.aliyuncs.com"

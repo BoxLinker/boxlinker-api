@@ -57,19 +57,28 @@ func action(c *cli.Context) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	var kubeconfig *string
-	if home := homeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
-	flag.Parse()
-
 	var (
 		clientSet *kubernetes.Clientset
 	)
 
 	if config.InCluster {
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			return err
+		}
+		clientSet, err = kubernetes.NewForConfig(config)
+		if err != nil {
+			return fmt.Errorf("connect to incluster k8s error: %v", err)
+		}
+	} else {
+		var kubeconfig *string
+		if home := homeDir(); home != "" {
+			kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+		} else {
+			kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+		}
+		flag.Parse()
+
 		// use the current context in kubeconfig
 		k8sConfig, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
 		if err != nil {
@@ -80,15 +89,6 @@ func action(c *cli.Context) error {
 		clientSet, err = kubernetes.NewForConfig(k8sConfig)
 		if err != nil {
 			return fmt.Errorf("connect to k8s error: %v", err)
-		}
-	} else {
-		config, err := rest.InClusterConfig()
-		if err != nil {
-			return err
-		}
-		clientSet, err = kubernetes.NewForConfig(config)
-		if err != nil {
-			return fmt.Errorf("connect to incluster k8s error: %v", err)
 		}
 	}
 
