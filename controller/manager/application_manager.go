@@ -10,12 +10,20 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"fmt"
+	"github.com/BoxLinker/boxlinker-api/controller/models"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"github.com/BoxLinker/boxlinker-api"
 )
 
 type ApplicationManager interface {
 	Manager
 	SyncPodConfigure(pcs []*appModels.PodConfigure) (int, error)
 	GetServiceByName(namespace, svcName string) (bool, error, *apiv1.Service, *extv1beta1.Ingress, *appsv1beta1.Deployment)
+
+	GetVolumeByName(namespace, name string) (pvc *apiv1.PersistentVolumeClaim, err error)
+	DeleteVolume(namespace, name string) error
+	CreateVolume(namespace string, volume *models.Volume) (*apiv1.PersistentVolumeClaim, error)
+	QueryVolume(namespace string, pc boxlinker.PageConfig) ([]*apiv1.PersistentVolumeClaim, error)
 }
 
 type DefaultApplicationManager struct {
@@ -41,6 +49,65 @@ func (m *DefaultApplicationManager) GetServiceByName(namespace, svcName string) 
 		return false, fmt.Errorf("Deployment %s/%s not found: %v", namespace, svcName, err), nil, nil, nil
 	}
 	return true, nil, svc, ing, deploy
+}
+
+func (m *DefaultApplicationManager) QueryVolume(namespace string, pc boxlinker.PageConfig) ([]*apiv1.PersistentVolumeClaim, error) {
+	claims, err := m.clientSet.CoreV1().PersistentVolumeClaims(namespace).List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	results := make([]*apiv1.PersistentVolumeClaim, 0)
+	var start, end int
+	l := len(claims.Items)
+	if pc.Offset() >= l {
+		start = 0
+		end = l
+	} else {
+		start = pc.Offset()
+		if pc.Offset() + pc.Limit() >= l {
+			end = l
+		} else {
+			end = pc.Offset() + pc.Limit()
+		}
+	}
+	for _, item := range claims.Items[start:end] {
+		results = append(results, &item)
+	}
+	return results, nil
+}
+func (m *DefaultApplicationManager) CreateVolume(namespace string, volume *models.Volume) (*apiv1.PersistentVolumeClaim, error) {
+	size, err := resource.ParseQuantity(volume.Size)
+	if err != nil {
+		return nil, err
+	}
+	pvc := &apiv1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: volume.Name,
+			Annotations: map[string]string{
+				"volume.beta.kubernetes.io/storage-class": "rbd",
+			},
+		},
+		Spec: apiv1.PersistentVolumeClaimSpec{
+			AccessModes: []apiv1.PersistentVolumeAccessMode{apiv1.ReadWriteOnce},
+			Resources: apiv1.ResourceRequirements{
+				Requests: apiv1.ResourceList{
+					apiv1.ResourceStorage: size,
+				},
+			},
+		},
+	}
+	claim, err := m.clientSet.CoreV1().PersistentVolumeClaims(namespace).Create(pvc)
+	if err != nil {
+		return nil, err
+	}
+	return claim, nil
+}
+func (m *DefaultApplicationManager) DeleteVolume(namespace, name string) error {
+	return m.clientSet.CoreV1().PersistentVolumeClaims(namespace).Delete(name, &metav1.DeleteOptions{})
+}
+func (m *DefaultApplicationManager) GetVolumeByName(namespace, name string) (pvc *apiv1.PersistentVolumeClaim, err error) {
+	pvc, err = m.clientSet.CoreV1().PersistentVolumeClaims(namespace).Get(name, metav1.GetOptions{})
+	return
 }
 func (m *DefaultApplicationManager) SyncPodConfigure(pcs []*appModels.PodConfigure) (int, error) {
 	sess := m.engine.NewSession()

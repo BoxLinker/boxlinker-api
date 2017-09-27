@@ -226,7 +226,7 @@ func (a *Api) QueryService(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
 		return
 	}
-	ings, err := a.clientSet.Ingresses(user.Name).List(metav1.ListOptions{})
+	ings, err := a.clientSet.ExtensionsV1beta1().Ingresses(user.Name).List(metav1.ListOptions{})
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
 		return
@@ -432,7 +432,7 @@ func (a *Api) CreateService(w http.ResponseWriter, r *http.Request){
 		},
 	}
 	logrus.Debugf("Create Ingress %s/%s (%+v)", user.Name, form.Name, ingress)
-	ing, err := a.clientSet.Ingresses(user.Name).Create(ingress)
+	ing, err := a.clientSet.ExtensionsV1beta1().Ingresses(user.Name).Create(ingress)
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_FAILED, "", err.Error())
 		return
