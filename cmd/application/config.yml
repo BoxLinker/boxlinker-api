@@ -1,6 +1,7 @@
 server:
   addr: ":8080"
   debug: true
+inCluster: true
 #db:
 #  host: "mysql"
 #  port: 3306

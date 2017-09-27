@@ -47,6 +47,7 @@ type Config struct {
 		Addr string `yaml:"addr,omitempty"`
 		Debug bool `yaml:"debug"`
 	}    `yaml:"server,omitempty"`
+	InCluster bool `yaml:"inCluster"`
 	DB struct{
 		Host string `yaml:"host,omitempty"`
 		Port int `yaml:"port,omitempty"`

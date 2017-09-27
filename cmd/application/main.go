@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"flag"
 	"path/filepath"
+	"k8s.io/client-go/rest"
 )
 
 var flags = []cli.Flag{
@@ -64,17 +65,33 @@ func action(c *cli.Context) error {
 	}
 	flag.Parse()
 
-	// use the current context in kubeconfig
-	k8sConfig, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err != nil {
-		panic(err.Error())
+	var (
+		clientSet *kubernetes.Clientset
+	)
+
+	if config.InCluster {
+		// use the current context in kubeconfig
+		k8sConfig, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+		if err != nil {
+			panic(err.Error())
+		}
+		logrus.Infof("kubeconfig (%+v)", k8sConfig)
+		// create the clientset
+		clientSet, err = kubernetes.NewForConfig(k8sConfig)
+		if err != nil {
+			return fmt.Errorf("connect to k8s error: %v", err)
+		}
+	} else {
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			return err
+		}
+		clientSet, err = kubernetes.NewForConfig(config)
+		if err != nil {
+			return fmt.Errorf("connect to incluster k8s error: %v", err)
+		}
 	}
-	logrus.Infof("kubeconfig (%+v)", k8sConfig)
-	// create the clientset
-	clientSet, err := kubernetes.NewForConfig(k8sConfig)
-	if err != nil {
-		panic(err.Error())
-	}
+
 	info, err := clientSet.ServerVersion()
 	if err != nil {
 		return err
