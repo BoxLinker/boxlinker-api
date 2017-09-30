@@ -97,7 +97,8 @@ func action(c *cli.Context) error {
 		return err
 	}
 	logrus.Infof("connect to api-server (%+v)", info)
-
+	// KUBE_CGROUP_DRIVER="--cgroup-driver=systemd"
+	// KUBE_STORAGE_DRIVER="--storage-driver=etcd2"
 	engine, err := models.NewEngine(models.DBOptions{
 		User: config.DB.User,
 		Password: config.DB.Password,
