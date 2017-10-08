@@ -1,32 +1,32 @@
 package application
 
 import (
-	"net/http"
-	"github.com/BoxLinker/boxlinker-api"
-	appsv1beta1 "k8s.io/api/apps/v1beta1"
-	extv1beta1 "k8s.io/api/extensions/v1beta1"
-	apiv1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"fmt"
+	"net/http"
+
+	"github.com/BoxLinker/boxlinker-api"
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
+	appsv1beta1 "k8s.io/api/apps/v1beta1"
+	apiv1 "k8s.io/api/core/v1"
+	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type ServicePortForm struct {
-	Name string `json:"name"`
+	Name     string `json:"name"`
 	Protocol string `json:"protocol"`
-	Port int `json:"port"`
-	Path string `json:"path"`
+	Port     int    `json:"port"`
+	Path     string `json:"path"`
 }
 
 type ServiceForm struct {
-	Name string `json:"name"`
-	Image string `json:"image"`
-	Memory string `json:"memory"`
-	CPU string `json:"cpu"`
-	Ports []*ServicePortForm `json:"ports"`
-
+	Name   string             `json:"name"`
+	Image  string             `json:"image"`
+	Memory string             `json:"memory"`
+	CPU    string             `json:"cpu"`
+	Ports  []*ServicePortForm `json:"ports"`
 }
 
 func getDeployByName(name string, list *appsv1beta1.DeploymentList) *appsv1beta1.Deployment {
@@ -85,7 +85,6 @@ func (a *Api) DeleteService(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_NOT_FOUND, nil, fmt.Sprintf("ingress not found (%s/%s)", namespace, svcName))
 		return
 	}
-
 
 	deletePolicy := metav1.DeletePropagationForeground
 	if err := deployOperator.Delete(deploy.Name, &metav1.DeleteOptions{
@@ -239,12 +238,14 @@ func (a *Api) QueryService(w http.ResponseWriter, r *http.Request) {
 	output := make([]*ServiceForm, 0)
 	var start, end int
 	l := len(svcs.Items)
+	// todo 这里得判断 ings deploys 和 svcs 长度是否一样
+	pc.TotalCount = l
 	if pc.Offset() >= l {
 		start = 0
 		end = l
 	} else {
 		start = pc.Offset()
-		if pc.Offset() + pc.Limit() >= l {
+		if pc.Offset()+pc.Limit() >= l {
 			end = l
 		} else {
 			end = pc.Offset() + pc.Limit()
@@ -276,11 +277,11 @@ func (a *Api) QueryService(w http.ResponseWriter, r *http.Request) {
 					Name: port.Name,
 					// todo 转化 ServicePort Protocol 为 字符串
 					Protocol: "tcp",
-					Port: int(port.Port),
+					Port:     int(port.Port),
 				}
 				if ing != nil {
 					rules := ing.Spec.Rules
-					if len(rules) > 0{
+					if len(rules) > 0 {
 						paths := rules[0].HTTP.Paths
 						for _, path := range paths {
 							if path.Backend.ServiceName == item.Name && path.Backend.ServicePort.IntVal == port.Port {
@@ -295,10 +296,13 @@ func (a *Api) QueryService(w http.ResponseWriter, r *http.Request) {
 		}
 		output = append(output, line)
 	}
-	boxlinker.Resp(w, boxlinker.STATUS_OK, output)
+	boxlinker.Resp(w, boxlinker.STATUS_OK, map[string]interface{}{
+		"pagination": pc.PaginationJSON(),
+		"data":       output,
+	})
 }
 
-func (a *Api) CreateService(w http.ResponseWriter, r *http.Request){
+func (a *Api) CreateService(w http.ResponseWriter, r *http.Request) {
 	user := a.getUserInfo(r)
 	form := &ServiceForm{}
 	if err := boxlinker.ReadRequestBody(r, form); err != nil {
@@ -354,11 +358,11 @@ func (a *Api) CreateService(w http.ResponseWriter, r *http.Request){
 							Resources: apiv1.ResourceRequirements{
 								Limits: apiv1.ResourceList{
 									apiv1.ResourceMemory: memoryQuantity,
-									apiv1.ResourceCPU: cpuQuantity,
+									apiv1.ResourceCPU:    cpuQuantity,
 								},
 								Requests: apiv1.ResourceList{
 									apiv1.ResourceMemory: memoryQuantity,
-									apiv1.ResourceCPU: cpuQuantity,
+									apiv1.ResourceCPU:    cpuQuantity,
 								},
 							},
 						},
