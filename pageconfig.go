@@ -15,8 +15,8 @@ func (pc PageConfig) Offset() int {
 
 func (pc PageConfig) PaginationJSON() map[string]int {
 	m := map[string]int{}
-	m["current_page"] = pc.CurrentPage
-	m["page_count"] = pc.PageCount
-	m["total_count"] = pc.TotalCount
+	m["currentPage"] = pc.CurrentPage
+	m["pageCount"] = pc.PageCount
+	m["totalCount"] = pc.TotalCount
 	return m
 }
