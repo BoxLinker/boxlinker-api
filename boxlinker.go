@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"github.com/rs/cors"
+	"fmt"
 )
 
 func ParsePageConfig(r *http.Request) PageConfig {

@@ -1,0 +1,11 @@
+server:
+  addr: ":8080"
+  debug: true
+auth:
+  registryAuthorization: "just4fun"
+amqp:
+  host: ""
+  exchange: ""
+  exchangeType: ""
+  routingKey: ""
+  reliable: true
