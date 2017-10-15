@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"encoding/json"
 	"github.com/rs/cors"
-	"fmt"
 )
 
 func ParsePageConfig(r *http.Request) PageConfig {
@@ -15,22 +14,22 @@ func ParsePageConfig(r *http.Request) PageConfig {
 
 func ParseHTTPQuery(r *http.Request) PageConfig {
 	q := r.URL.Query()
-	current_pageS := q.Get("current_page")
+	currentPageS := q.Get("currentPage")
 
-	current_page, err := strconv.ParseInt(current_pageS, 10, 0)
-	if err != nil || current_page <= 0 {
-		current_page = 1
+	currentPage, err := strconv.ParseInt(currentPageS, 10, 0)
+	if err != nil || currentPage <= 0 {
+		currentPage = 1
 	}
 
-	page_countS := q.Get("page_count")
+	pageCountS := q.Get("pageCount")
 
-	page_count, err := strconv.ParseInt(page_countS, 10, 0)
-	if err != nil || page_count <= 0 {
-		page_count = 10
+	pageCount, err := strconv.ParseInt(pageCountS, 10, 0)
+	if err != nil || pageCount <= 0 {
+		pageCount = 10
 	}
 	pc := PageConfig{}
-	pc.CurrentPage = int(current_page)
-	pc.PageCount = int(page_count)
+	pc.CurrentPage = int(currentPage)
+	pc.PageCount = int(pageCount)
 	return pc
 }
 

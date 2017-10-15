@@ -20,3 +20,10 @@ func (pc PageConfig) PaginationJSON() map[string]int {
 	m["totalCount"] = pc.TotalCount
 	return m
 }
+
+func (pc PageConfig) FormatOutput(output interface{}) map[string]interface{} {
+	return map[string]interface{}{
+		"pagination": pc.PaginationJSON(),
+		"data":       output,
+	}
+}

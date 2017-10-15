@@ -110,10 +110,10 @@ func (a *Api) Run() error {
 	serviceRouter.HandleFunc("/v1/application/auth/service/{name}", a.DeleteService).Methods("DELETE")
 	serviceRouter.HandleFunc("/v1/application/auth/service/{name}/exists", a.IsServiceExist).Methods("GET")
 
-	volumeRouter := mux.NewRouter()
-	volumeRouter.HandleFunc("/v1/application/auth/volume", a.CreateVolume).Methods("POST")
-	volumeRouter.HandleFunc("/v1/application/auth/volume", a.QueryVolume).Methods("GET")
-	volumeRouter.HandleFunc("/v1/application/auth/volume/{name}", a.DeleteVolume).Methods("DELETE")
+	//volumeRouter := mux.NewRouter()
+	serviceRouter.HandleFunc("/v1/application/auth/volume", a.CreateVolume).Methods("POST")
+	serviceRouter.HandleFunc("/v1/application/auth/volume", a.QueryVolume).Methods("GET")
+	serviceRouter.HandleFunc("/v1/application/auth/volume/{name}", a.DeleteVolume).Methods("DELETE")
 
 	authRouter := negroni.New()
 	authRouter.Use(negroni.HandlerFunc(apiAuthRequired.HandlerFuncWithNext))

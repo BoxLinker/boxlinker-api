@@ -5,6 +5,7 @@ import (
 	"github.com/BoxLinker/boxlinker-api"
 	"github.com/BoxLinker/boxlinker-api/controller/models"
 	"github.com/gorilla/mux"
+	apiv1 "k8s.io/api/core/v1"
 )
 
 type VolumeForm struct {
@@ -40,10 +41,34 @@ func (a *Api) DeleteVolume(w http.ResponseWriter, r *http.Request){
 }
 func (a *Api) QueryVolume(w http.ResponseWriter, r *http.Request){
 	user := a.getUserInfo(r)
-	claims, err := a.manager.QueryVolume(user.Name, boxlinker.ParsePageConfig(r))
+	pc := boxlinker.ParsePageConfig(r)
+	claims, err := a.manager.QueryVolume(user.Name, pc)
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_NOT_FOUND, nil, err.Error())
 		return
 	}
-	boxlinker.Resp(w, boxlinker.STATUS_OK, claims)
+	l := len(claims)
+	var start, end int
+	if pc.Offset() >= l {
+		start = 0
+		end = l
+	} else {
+		start = pc.Offset()
+		if pc.Offset() + pc.Limit() >= l {
+			end = l
+		} else {
+			end = pc.Offset() + pc.Limit()
+		}
+	}
+	pc.TotalCount = l
+	output := make([]*VolumeForm, 0)
+	listOut := claims[start:end]
+	for _, item := range listOut {
+		capacity := item.Status.Capacity[apiv1.ResourceStorage]
+		output = append(output, &VolumeForm{
+			Name: item.ObjectMeta.Name,
+			Size: (&capacity).String(),
+		})
+	}
+	boxlinker.Resp(w, boxlinker.STATUS_OK, pc.FormatOutput(output))
 }

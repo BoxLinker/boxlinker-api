@@ -9,7 +9,6 @@ import (
 	"strings"
 	"strconv"
 	"path"
-	"github.com/cesanta/glog"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry/authn"
 	"encoding/json"
 )
@@ -168,7 +167,7 @@ func matchIP(ipp *string, ip net.IP) bool {
 	}
 	ipnet, err := parseIPPattern(*ipp)
 	if err != nil { // Can't happen, it supposed to have been validated
-		glog.Fatalf("Invalid IP pattern: %s", *ipp)
+		logrus.Errorf("Invalid IP pattern: %s", *ipp)
 	}
 	return ipnet.Contains(ip)
 }
