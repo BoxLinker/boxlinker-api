@@ -56,23 +56,25 @@ func (a *Api) QueryPubImages(w http.ResponseWriter, r *http.Request) {
 // GET		/v1/registry/auth/image/list?private=1&current_page=1&page_count=10
 // 			获取已登录用户的镜像
 func (a *Api) QueryImages(w http.ResponseWriter, r *http.Request) {
+	// 获取用户镜像需要验证
+	user := a.getUserInfo(r)
+	if user == nil || user.Name == ""  {
+		boxlinker.Resp(w, boxlinker.STATUS_UNAUTHORIZED, nil)
+		return
+	}
+
 	var output []map[string]interface{}
 	var images []*registryModels.Image
+	pc := boxlinker.ParsePageConfig(r)
 	var err error
 	isPrivate := -1
-	namespace := a.getUserInfo(r).Name
+	namespace := user.Name
 	logrus.Debugf("username:>> %s", namespace)
 	private := r.URL.Query().Get("private")
 	if strings.Index("10", private) >= 0 {
 		if ii, err := strconv.Atoi(private); err == nil {
 			isPrivate = ii
 		}
-	}
-	// 获取用户镜像需要验证
-	user := a.getUserInfo(r)
-	if user == nil || user.Name != namespace  {
-		boxlinker.Resp(w, boxlinker.STATUS_UNAUTHORIZED, nil)
-		return
 	}
 
 	cond := "namespace = ?"
@@ -82,7 +84,7 @@ func (a *Api) QueryImages(w http.ResponseWriter, r *http.Request) {
 		cond += " and is_private = ?"
 		args = append(args, isPrivate)
 	}
-	images, err = a.Manager.QueryImagesByConditions(cond, args, nil ,boxlinker.ParsePageConfig(r))
+	images, err = a.Manager.QueryImagesByConditions(cond, args, nil ,pc)
 
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
@@ -91,7 +93,13 @@ func (a *Api) QueryImages(w http.ResponseWriter, r *http.Request) {
 	for _, image := range images {
 		output = append(output, image.APISimpleJson())
 	}
-	boxlinker.Resp(w, boxlinker.STATUS_OK, output)
+	count, err := a.Manager.CountImagesByNamespace(namespace)
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
+		return
+	}
+	pc.TotalCount = int(count)
+	boxlinker.Resp(w, boxlinker.STATUS_OK, pc.FormatOutput(output))
 }
 // GET		/v1/registry/image/:id
 func (a *Api) GetImage(w http.ResponseWriter, r *http.Request) {
@@ -158,7 +166,10 @@ func (a *Api) ImageExists(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_NOT_FOUND, nil)
 		return
 	}
-	images, err := a.Manager.QueryImagesByConditions("namespace = ? and name = ?", []interface{}{user.Name, name}, []string{"id"}, boxlinker.PageConfig{1,1})
+	images, err := a.Manager.QueryImagesByConditions("namespace = ? and name = ?", []interface{}{user.Name, name}, []string{"id"}, boxlinker.PageConfig{
+		CurrentPage: 1,
+		PageCount:1,
+	})
 	if err != nil || len(images) == 0 {
 		boxlinker.Resp(w, boxlinker.STATUS_NOT_FOUND, nil)
 		return

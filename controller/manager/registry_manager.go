@@ -12,6 +12,8 @@ type RegistryManager interface {
 	SaveACL(acl *registryModels.ACL) error
 	SaveImage(image *registryModels.Image) error
 	ImageExistsByIdAndNamespace(id, namespace string) (bool, error)
+	CountImages() (count int64, err error)
+	CountImagesByNamespace(namespace string) (count int64, err error)
 	QueryImages(config boxlinker.PageConfig) (images []*registryModels.Image, err error)
 	QueryImagesByConditions(query interface{}, args []interface{}, cols []string, config boxlinker.PageConfig)(images []*registryModels.Image, err error)
 	QueryImagesByNamespace(namespace string, config boxlinker.PageConfig) (images []*registryModels.Image, err error)
@@ -91,6 +93,13 @@ func (dm *DefaultRegistryManager) GetImageByIndexKey(namespace, name, tag string
 		return nil, nil
 	}
 	return image, nil
+}
+
+func (dm *DefaultRegistryManager) CountImages() (count int64, err error) {
+	return dm.engine.Count(new(registryModels.Image))
+}
+func (dm *DefaultRegistryManager) CountImagesByNamespace(namespace string) (count int64, err error) {
+	return dm.engine.Where("namespace = ?", namespace).Count(new(registryModels.Image))
 }
 
 func (dm *DefaultRegistryManager) QueryImagesByConditions(query interface{}, args []interface{}, cols []string, config boxlinker.PageConfig)(images []*registryModels.Image, err error){

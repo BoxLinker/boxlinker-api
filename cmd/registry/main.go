@@ -60,7 +60,6 @@ func action(c *cli.Context) error {
 	if config.Server.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
-
 	basicAuthURL := c.String("basic-auth-url")
 	if len(basicAuthURL) == 0 {
 		return errors.New("basic-auth-url is required")
@@ -94,5 +93,5 @@ func action(c *cli.Context) error {
 		return err
 	}
 
-	return fmt.Errorf("Run Api err: %v", a.Run())
+	return fmt.Errorf("run api err: %v", a.Run())
 }
