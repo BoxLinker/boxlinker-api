@@ -7,7 +7,7 @@ import (
 	"os"
 	"errors"
 	"github.com/BoxLinker/boxlinker-api/controller/manager"
-	"github.com/BoxLinker/boxlinker-api/controller/amqp"
+	"github.com/BoxLinker/boxlinker-api/pkg/amqp"
 )
 
 var flags = []cli.Flag{
@@ -20,7 +20,7 @@ var flags = []cli.Flag{
 
 func main(){
 	app := cli.NewApp()
-	app.Name = "Boxlinker 滚动更新服务"
+	app.Name = "Boxlinker 镜像库监听服务"
 	app.Before = func(c *cli.Context) error {
 		if c.Bool("debug") {
 			logrus.SetLevel(logrus.DebugLevel)
@@ -62,6 +62,7 @@ func action(c *cli.Context) error {
 	})
 
 	aApi, err := api.NewApi(api.ApiConfig{
+		Config: config,
 		ControllerManager: controllerManager,
 	})
 

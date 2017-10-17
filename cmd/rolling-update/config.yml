@@ -1,13 +1,20 @@
 server:
-  addr: ":8080"
+  addr: ":8082"
   debug: true
-inCluster: true
-db:
- host: "mysql"
- port: 3306
- user: "root"
- password: "123456"
- name: "boxlinker"
+inCluster: false
+registryHost: "registry.cn-beijing.aliyuncs.com"
+amqp:
+  uri: "amqp://guest:guest@localhost:5672/"
+  exchange: "registry-watcher"
+  exchangeType: "fanout"
+  queueName: "registry-watcher"
+  bindingKey: "registry-watcher-key"
+#db:
+# host: "mysql"
+# port: 3306
+# user: "root"
+# password: "123456"
+# name: "boxlinker"
 db:
   host: "boxlinker.com"
   port: 13306
@@ -17,12 +24,3 @@ db:
 auth:
   tokenAuthUrl: "https://api.boxlinker.com/v1/user/account/authToken"
   basicAuthUrl: "https://api.boxlinker.com/v1/user/auth/basicAuth"
-podConfigure:
-- memory: "64Mi"
-  cpu: "200"
-- memory: "128Mi"
-  cpu: "400"
-- memory: "256Mi"
-  cpu: "800"
-- memory: "512Mi"
-  cpu: "1000"

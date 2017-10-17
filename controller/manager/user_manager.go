@@ -3,7 +3,7 @@ package manager
 import (
 	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	mAuth "github.com/BoxLinker/boxlinker-api/auth"
-	"github.com/BoxLinker/boxlinker-api/controller/amqp"
+	"github.com/BoxLinker/boxlinker-api/pkg/amqp"
 	"github.com/go-xorm/xorm"
 	"fmt"
 	settings "github.com/BoxLinker/boxlinker-api/settings/user"

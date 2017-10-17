@@ -18,13 +18,13 @@ import (
 
 type Api struct {
 	config *Config
-	manager manager.ApplicationManager
+	manager manager.RollingUpdateManager
 	clientSet *kubernetes.Clientset
 }
 
 type ApiConfig struct {
 	Config *Config
-	ControllerManager manager.ApplicationManager
+	ControllerManager manager.RollingUpdateManager
 	ClientSet *kubernetes.Clientset
 }
 
@@ -34,6 +34,7 @@ type Config struct {
 		Debug bool `yaml:"debug"`
 	}    `yaml:"server,omitempty"`
 	InCluster bool `yaml:"inCluster"`
+	RegistryHost string `yaml:"registryHost"`
 	DB struct{
 		Host string `yaml:"host,omitempty"`
 		Port int `yaml:"port,omitempty"`
@@ -41,14 +42,17 @@ type Config struct {
 		Password string `yaml:"password,omitempty"`
 		Name string `yaml:"name,omitempty"`
 	} `yaml:"db,omitempty"`
+	AMQP struct{
+		URI string `yaml:"uri,omitempty"`
+		Exchange string `yaml:"exchange,omitempty"`
+		ExchangeType string `yaml:"exchangeType,omitempty"`
+		QueueName string `yaml:"queueName,omitempty"`
+		BindingKey string `yaml:"bindingKey,omitempty"`
+	} `yaml:"amqp,omitempty"`
 	Auth struct{
 		TokenAuthUrl string `yaml:"tokenAuthUrl,omitempty"`
 		BasicAuthUrl string `yaml:"basicAuthUrl,omitempty"`
 	} `yaml:"auth,omitempty"`
-	PodConfigure []struct{
-		Memory string `yaml:"memory,omitempty"`
-		CPU string `yaml:"cpu,omitempty"`
-	} `yaml:"podConfigure,omitempty"`
 }
 
 func NewApi(config ApiConfig) (*Api, error) {
@@ -69,7 +73,7 @@ func (a *Api) Run() error {
 	globalMux := http.NewServeMux()
 
 	serviceRouter := mux.NewRouter()
-	serviceRouter.HandleFunc("/v1/rolling-update/auth/service", a.RegistryEvent).Methods("POST")
+	serviceRouter.HandleFunc("/v1/rolling-update/auth/test", a.Test).Methods("GET")
 
 	authRouter := negroni.New()
 	authRouter.Use(negroni.HandlerFunc(apiAuthRequired.HandlerFuncWithNext))

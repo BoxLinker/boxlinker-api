@@ -1,7 +1,7 @@
 package manager
 
 import (
-	"github.com/BoxLinker/boxlinker-api/controller/amqp"
+	"github.com/BoxLinker/boxlinker-api/pkg/amqp"
 	"github.com/BoxLinker/boxlinker-api/pkg/registry"
 	"encoding/json"
 )

@@ -6,7 +6,7 @@ import (
 	"github.com/rs/cors"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/mux"
-	"github.com/BoxLinker/boxlinker-api/controller/amqp"
+	"github.com/BoxLinker/boxlinker-api/pkg/amqp"
 	"encoding/json"
 	"time"
 	"fmt"

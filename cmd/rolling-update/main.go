@@ -14,6 +14,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"github.com/BoxLinker/boxlinker-api/controller/models"
 	"errors"
+	"github.com/BoxLinker/boxlinker-api/pkg/amqp"
 )
 
 var flags = []cli.Flag{
@@ -111,7 +112,16 @@ func action(c *cli.Context) error {
 		return fmt.Errorf("new db engine err: %v", err)
 	}
 
-	controllerManager, err := manager.NewApplicationManager(engine, clientSet)
+	ac := config.AMQP
+	controllerManager, err := manager.NewDefaultRollingUpdateManager(&manager.DefaultRollingUpdateConfig{
+		RegistryHost: config.RegistryHost,
+	},engine, clientSet, &amqp.ConsumerConfig{
+		URI: ac.URI,
+		ExchangeType: ac.ExchangeType,
+		Exchange: ac.Exchange,
+		QueueName: ac.QueueName,
+		BindingKey: ac.BindingKey,
+	})
 	if err != nil {
 		return fmt.Errorf("new controller manager err: %v", err)
 	}
