@@ -5,27 +5,23 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v2"
 	"github.com/BoxLinker/boxlinker-api/controller/manager"
-	"k8s.io/client-go/kubernetes"
 	"net/http"
 	"github.com/gorilla/mux"
 	"github.com/codegangsta/negroni"
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
-	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
-	tAuth "github.com/BoxLinker/boxlinker-api/controller/middleware/auth_token"
+	tAuth "github.com/BoxLinker/boxlinker-api/controller/middleware/auth_amqp"
 	"github.com/BoxLinker/boxlinker-api"
 )
 
 type Api struct {
 	config *Config
-	manager manager.ApplicationManager
-	clientSet *kubernetes.Clientset
+	manager manager.RegistryWatcherManager
 }
 
 type ApiConfig struct {
 	Config *Config
-	ControllerManager manager.ApplicationManager
-	ClientSet *kubernetes.Clientset
+	ControllerManager manager.RegistryWatcherManager
 }
 
 type Config struct {
@@ -33,48 +29,39 @@ type Config struct {
 		Addr string `yaml:"addr,omitempty"`
 		Debug bool `yaml:"debug"`
 	}    `yaml:"server,omitempty"`
-	InCluster bool `yaml:"inCluster"`
-	DB struct{
-		Host string `yaml:"host,omitempty"`
-		Port int `yaml:"port,omitempty"`
-		User string `yaml:"user,omitempty"`
-		Password string `yaml:"password,omitempty"`
-		Name string `yaml:"name,omitempty"`
-	} `yaml:"db,omitempty"`
 	Auth struct{
-		TokenAuthUrl string `yaml:"tokenAuthUrl,omitempty"`
-		BasicAuthUrl string `yaml:"basicAuthUrl,omitempty"`
+		RegistryAuthorization string `yaml:"registryAuthorization,omitempty"`
 	} `yaml:"auth,omitempty"`
-	PodConfigure []struct{
-		Memory string `yaml:"memory,omitempty"`
-		CPU string `yaml:"cpu,omitempty"`
-	} `yaml:"podConfigure,omitempty"`
+	Amqp struct{
+		Host string `yaml:"host,omitempty"`
+		Exchange string `yaml:"exchange,omitempty"`
+		ExchangeType string `yaml:"exchangeType,omitempty"`
+		Reliable bool `yaml:"reliable"`
+	}
 }
 
 func NewApi(config ApiConfig) (*Api, error) {
 	aApi := &Api{
 		config: config.Config,
 		manager: config.ControllerManager,
-		clientSet: config.ClientSet,
 	}
 	return aApi, nil
 }
 
-
 func (a *Api) Run() error {
 	cs := boxlinker.Cors
 	// middleware
-	apiAuthRequired := tAuth.NewAuthTokenRequired(a.config.Auth.TokenAuthUrl)
+	apiAuthRequired := tAuth.NewAuthAmqpRequired(a.config.Auth.RegistryAuthorization)
 
 	globalMux := http.NewServeMux()
 
 	serviceRouter := mux.NewRouter()
-	serviceRouter.HandleFunc("/v1/rolling-update/auth/service", a.RegistryEvent).Methods("POST")
+	serviceRouter.HandleFunc("/v1/registryWatcher/event", a.RegistryEvent).Methods("POST")
 
 	authRouter := negroni.New()
 	authRouter.Use(negroni.HandlerFunc(apiAuthRequired.HandlerFuncWithNext))
 	authRouter.UseHandler(serviceRouter)
-	globalMux.Handle("/v1/rolling-update/auth/", authRouter)
+	globalMux.Handle("/v1/registryWatcher/", authRouter)
 
 	s := &http.Server{
 		Addr: a.config.Server.Addr,
@@ -100,20 +87,4 @@ func LoadConfig(cPath string) (*Config, error) {
 	}
 
 	return c, nil
-}
-
-
-func (a *Api) getUserInfo(r *http.Request) *userModels.User {
-	us := r.Context().Value("user")
-	if us == nil {
-		return nil
-	}
-	ctx := us.(map[string]interface{})
-	if ctx == nil || ctx["uid"] == nil {
-		return nil
-	}
-	return &userModels.User{
-		Id: ctx["uid"].(string),
-		Name: ctx["username"].(string),
-	}
 }

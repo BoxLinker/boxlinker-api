@@ -6,6 +6,8 @@ import (
 	api "github.com/BoxLinker/boxlinker-api/api/v1/registry-watcher"
 	"os"
 	"errors"
+	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	"github.com/BoxLinker/boxlinker-api/controller/amqp"
 )
 
 var flags = []cli.Flag{
@@ -47,4 +49,26 @@ func action(c *cli.Context) error {
 	if config.Server.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
+
+	amqpProducer := amqp.NewProducer(amqp.ProducerOptions{
+		URI: config.Amqp.Host,
+		Exchange: config.Amqp.Exchange,
+		ExchangeType: config.Amqp.ExchangeType,
+		Reliable: config.Amqp.Reliable,
+	})
+
+	controllerManager := manager.NewDefaultRegistryWatcherManagerOptions(manager.DefaultRegistryWatcherManagerOptions{
+		AmqpProducer: amqpProducer,
+	})
+
+	aApi, err := api.NewApi(api.ApiConfig{
+		ControllerManager: controllerManager,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return aApi.Run()
+
 }
