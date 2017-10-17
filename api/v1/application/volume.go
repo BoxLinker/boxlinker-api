@@ -48,22 +48,27 @@ func (a *Api) QueryVolume(w http.ResponseWriter, r *http.Request){
 		return
 	}
 	l := len(claims)
-	var start, end int
-	if pc.Offset() >= l {
-		start = 0
-		end = l
-	} else {
-		start = pc.Offset()
-		if pc.Offset() + pc.Limit() >= l {
-			end = l
-		} else {
-			end = pc.Offset() + pc.Limit()
-		}
-	}
+	//var start, end int
+	//if pc.Offset() >= l {
+	//	start = 0
+	//	end = l
+	//} else {
+	//	start = pc.Offset()
+	//	if pc.Offset() + pc.Limit() >= l {
+	//		end = l
+	//	} else {
+	//		end = pc.Offset() + pc.Limit()
+	//	}
+	//}
 	pc.TotalCount = l
 	output := make([]*VolumeForm, 0)
-	listOut := claims[start:end]
-	for _, item := range listOut {
+
+	//listOut := claims[start:end]
+	//logrus.Debugf("listOut:>\n%+v", listOut)
+	//logrus.Debugf("==========")
+	for _, item := range claims {
+		//logrus.Debugf("item:>\n%+v", item.ObjectMeta.Name, item)
+		//logrus.Debugf("==========")
 		capacity := item.Status.Capacity[apiv1.ResourceStorage]
 		output = append(output, &VolumeForm{
 			Name: item.ObjectMeta.Name,

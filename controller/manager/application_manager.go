@@ -13,6 +13,7 @@ import (
 	"github.com/BoxLinker/boxlinker-api/controller/models"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"github.com/BoxLinker/boxlinker-api"
+	"encoding/json"
 )
 
 type ApplicationManager interface {
@@ -23,7 +24,7 @@ type ApplicationManager interface {
 	GetVolumeByName(namespace, name string) (pvc *apiv1.PersistentVolumeClaim, err error)
 	DeleteVolume(namespace, name string) error
 	CreateVolume(namespace string, volume *models.Volume) (*apiv1.PersistentVolumeClaim, error)
-	QueryVolume(namespace string, pc boxlinker.PageConfig) ([]*apiv1.PersistentVolumeClaim, error)
+	QueryVolume(namespace string, pc boxlinker.PageConfig) ([]apiv1.PersistentVolumeClaim, error)
 }
 
 type DefaultApplicationManager struct {
@@ -51,12 +52,17 @@ func (m *DefaultApplicationManager) GetServiceByName(namespace, svcName string) 
 	return true, nil, svc, ing, deploy
 }
 
-func (m *DefaultApplicationManager) QueryVolume(namespace string, pc boxlinker.PageConfig) ([]*apiv1.PersistentVolumeClaim, error) {
+func (m *DefaultApplicationManager) QueryVolume(namespace string, pc boxlinker.PageConfig) ([]apiv1.PersistentVolumeClaim, error) {
 	claims, err := m.clientSet.CoreV1().PersistentVolumeClaims(namespace).List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	results := make([]*apiv1.PersistentVolumeClaim, 0)
+	b, _ := json.MarshalIndent(claims, "", "\t")
+
+	logrus.Debugf("=====---=====")
+	logrus.Debugf("%s", b)
+	logrus.Debugf("=====---=====")
+	results := make([]apiv1.PersistentVolumeClaim, 0)
 	var start, end int
 	l := len(claims.Items)
 	if pc.Offset() >= l {
@@ -70,8 +76,10 @@ func (m *DefaultApplicationManager) QueryVolume(namespace string, pc boxlinker.P
 			end = pc.Offset() + pc.Limit()
 		}
 	}
+	logrus.Debugf("start %d, end %d", start, end)
 	for _, item := range claims.Items[start:end] {
-		results = append(results, &item)
+		logrus.Debugf("==> %s, %s, %s", item.Namespace, item.ObjectMeta.Name, item.Name)
+		results = append(results, item)
 	}
 	return results, nil
 }
