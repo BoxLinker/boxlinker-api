@@ -56,12 +56,12 @@ func (a *Api) Run() error {
 	globalMux := http.NewServeMux()
 
 	serviceRouter := mux.NewRouter()
-	serviceRouter.HandleFunc("/v1/registryWatcher/event", a.RegistryEvent).Methods("POST")
+	serviceRouter.HandleFunc("/v1/registry-watcher/event", a.RegistryEvent).Methods("POST")
 
 	authRouter := negroni.New()
 	authRouter.Use(negroni.HandlerFunc(apiAuthRequired.HandlerFuncWithNext))
 	authRouter.UseHandler(serviceRouter)
-	globalMux.Handle("/v1/registryWatcher/", authRouter)
+	globalMux.Handle("/v1/registry-watcher/", authRouter)
 
 	s := &http.Server{
 		Addr: a.config.Server.Addr,
