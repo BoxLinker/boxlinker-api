@@ -9,7 +9,7 @@ amqp:
   exchangeType: "fanout"
   queueName: "registry-watcher"
   bindingKey: "registry-watcher-key"
-#db:
+# db:
 # host: "mysql"
 # port: 3306
 # user: "root"
