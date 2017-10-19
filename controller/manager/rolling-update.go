@@ -83,7 +83,6 @@ func (m *defaultRollingUpdateManager) DoRollingUpdate(event *registry.Event) {
 		logrus.Errorf("get deployments err: (%s)", err.Error())
 		return
 	}
-	logrus.Debugf("start to rolling update (%s) ...", event.Target.Repository);
 	imageName := fmt.Sprintf("%s/%s/%s", m.config.RegistryHost, namespace, image)
 	imageURL := fmt.Sprintf("%s:%s", imageName, tag)
 	for _, deploy := range deploys.Items {
@@ -94,23 +93,19 @@ func (m *defaultRollingUpdateManager) DoRollingUpdate(event *registry.Event) {
 			return
 		}
 		container := &containers[0]
-		logrus.Debugf("get container (%+v)", container)
 		cImage := container.Image
 		parts := strings.Split(cImage, ":")
 		if len(parts) != 2 {
 			logrus.Warnf("deployment [%s] got invalid image url: (%s)", name, cImage)
 			return
 		}
-		logrus.Debugf("1111")
 		if imageName != parts[0] {
 			logrus.Debugf("deploy (%s) image (%s) does not fit", name, cImage)
 			continue
 		}
-		logrus.Debugf("2222")
 		if imageURL == cImage {
 			logrus.Warnf("the deployment to be updated get same image url with registry event. (%s)", imageURL)
 		}
-		logrus.Debugf("3333")
 		container.Image = imageURL
 		logrus.Debugf("rolling update on deploy (%s/%s) with image (%s)", namespace, name, imageURL)
 		if _, err := deployOperator.Update(&deploy); err != nil {
