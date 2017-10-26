@@ -186,7 +186,7 @@ func sendEmail(msgChan <-chan []byte){
 
 
 func (a *Api) publishTest(form *SendForm) error {
-	c := a.amqpConsumer
+	//c := a.amqpConsumer
 	i := 0
 	for {
 		time.Sleep(5*time.Second)
@@ -207,10 +207,10 @@ func (a *Api) publishTest(form *SendForm) error {
 		s := string(b)
 		log.Debugf("-> %s", s)
 		amqp.NewProducer(amqp.ProducerOptions{
-			URI: c.URI,
-			Exchange: c.Exchange,
-			ExchangeType: c.ExchangeType,
-			RoutingKey: c.QueueName,
+			//URI: c.URI,
+			//Exchange: c.Exchange,
+			//ExchangeType: c.ExchangeType,
+			//RoutingKey: c.QueueName,
 		}).PublishOnce(s)
 		i++
 		if i >= 1 {

@@ -74,10 +74,14 @@ func NewEngine(config DBOptions, t []interface{}) (*xorm.Engine, error){
 }
 
 func ping(engine *xorm.Engine){
+	log.Debugf("start to pint db engine.")
+	forever := make(chan bool)
 	c := cron.New()
-	c.AddFunc("@every 10s", func(){
+	c.AddFunc("@every 1m", func(){
 		if err := engine.Ping(); err != nil {
 			log.Errorf("ping err: %s", err.Error())
 		}
 	})
+	c.Start()
+	<-forever
 }

@@ -13,7 +13,7 @@ IMAGE_REGISTRY=registry-server
 IMAGE_REGISTRY_TAG=v1.0
 
 IMAGE_USER=user-server
-IMAGE_USER_TAG=${shell git describe --tags --long}
+IMAGE_USER_TAG=v1.0
 
 IMAGE_APP=application-server
 IMAGE_APP_TAG=${shell git describe --tags --long}
