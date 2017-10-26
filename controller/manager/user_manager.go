@@ -19,7 +19,7 @@ type UserManager interface {
 
 	// user
 	CheckAdminUser() error
-	GetUserByName(username string) (*userModels.User)
+	GetUserByName(username string) (*userModels.User, error)
 	GetUserById(id string) (*userModels.User)
 	GetUsers(pageConfig boxlinker.PageConfig) ([]*userModels.User, error)
 	SaveUser(user *userModels.User) error
@@ -188,14 +188,15 @@ func (m DefaultUserManager) GetUsers(pageConfig boxlinker.PageConfig) (users []*
 	return
 }
 
-func (m DefaultUserManager) GetUserByName(username string) (*userModels.User) {
+func (m DefaultUserManager) GetUserByName(username string) (*userModels.User, error) {
 	u := &userModels.User{
 		Name: username,
 	}
-	if found, _ := m.engine.Get(u); found {
-		return u
+	if _, err := m.engine.Get(u); err != nil {
+		log.Debugf("GetUserByName err: %s", err.Error())
+		return nil, err
 	}
-	return nil
+	return u, nil
 }
 
 func (m DefaultUserManager) GetUserById(id string) (*userModels.User) {

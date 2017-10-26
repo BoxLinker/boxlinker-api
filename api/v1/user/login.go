@@ -31,7 +31,11 @@ func (a *Api) BasicAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Debugf("user: %s, pass: %s", user, pass)
-	u := a.manager.GetUserByName(user)
+	u, err := a.manager.GetUserByName(user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if u == nil {
 		log.Debugf("user %s not found", user)
 		http.Error(w, "", http.StatusNotFound)
@@ -59,7 +63,11 @@ func (a *Api) Login(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	u := a.manager.GetUserByName(form.Username)
+	u, err := a.manager.GetUserByName(form.Username)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if u == nil {
 		boxlinker.Resp(w, boxlinker.STATUS_NOT_FOUND, nil, "user not found")
 		return

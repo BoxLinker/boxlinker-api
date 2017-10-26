@@ -9,6 +9,7 @@ import (
 	"github.com/go-xorm/core"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/urfave/cli"
+	"github.com/robfig/cron"
 )
 
 //var (
@@ -68,6 +69,15 @@ func NewEngine(config DBOptions, t []interface{}) (*xorm.Engine, error){
 		return nil, fmt.Errorf("sync tables err: %v",err)
 	}
 	x.ShowSQL(true)
+	go ping(x)
 	return x, nil
 }
 
+func ping(engine *xorm.Engine){
+	c := cron.New()
+	c.AddFunc("@every 10s", func(){
+		if err := engine.Ping(); err != nil {
+			log.Errorf("ping err: %s", err.Error())
+		}
+	})
+}
