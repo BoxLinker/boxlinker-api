@@ -12,15 +12,6 @@ import (
 	"github.com/robfig/cron"
 )
 
-//var (
-//	tables []interface{}
-//)
-//
-//func init(){
-//	tables = append(tables, new(User), new(UserToBeConfirmed))
-//}
-
-
 type DBOptions struct {
 	User string
 	Password string
