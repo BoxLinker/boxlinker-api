@@ -420,7 +420,7 @@ func (a *Api) CreateService(w http.ResponseWriter, r *http.Request) {
 	}
 	rules := make([]extv1beta1.IngressRule, 0)
 	rules = append(rules, extv1beta1.IngressRule{
-		Host: fmt.Sprintf("%s.%s.boxlinker.com", form.Name, "lb1"),
+		Host: fmt.Sprintf("%s-%s.%s.boxlinker.com", user.Name, form.Name, "lb1"),
 		IngressRuleValue: extv1beta1.IngressRuleValue{
 			HTTP: &extv1beta1.HTTPIngressRuleValue{
 				Paths: paths,
