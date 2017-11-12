@@ -6,8 +6,6 @@ import (
 	"sync"
 	"bytes"
 	"fmt"
-	"github.com/olivere/elastic"
-	"context"
 	"errors"
 	"github.com/BoxLinker/boxlinker-api/modules/logs"
 )
@@ -24,27 +22,15 @@ type Entity struct {
 }
 
 type logger struct {
-	containerID string
-	elasticIndex string
-	ctx context.Context
-	client *elastic.Client
 	searchFunc func() (string, error)
 }
 
 type LoggerOptions struct {
-	Client *elastic.Client
-	ContainerID string
-	ElasticIndex string
-	Context context.Context
 	SearchFunc func() (string, error)
 }
 
 func NewLogger(option *LoggerOptions) logs.Logger {
 	return &logger{
-		client: option.Client,
-		containerID: option.ContainerID,
-		elasticIndex: option.ElasticIndex,
-		ctx: option.Context,
 		searchFunc: option.SearchFunc,
 	}
 }
@@ -54,15 +40,10 @@ func (l *logger) Create(name string) (io.Writer, error) {
 }
 
 func (l *logger) Open(name string) (io.Reader, error) {
-	r := &reader{
+	r := &Reader{
 		l: l,
 		throttle: time.Tick(readThrottle),
 		closed: false,
-		//b: lockingBuffer{},
-		client: l.client,
-		cid: l.containerID,
-		index: l.elasticIndex,
-		ctx: l.ctx,
 	}
 	go r.start()
 	return r, nil
@@ -76,12 +57,8 @@ func (w *writer) Close() error {
 	return w.WriteCloser.Close()
 }
 
-type reader struct {
+type Reader struct {
 	l *logger
-	ctx context.Context
-	cid string
-	index string
-	client *elastic.Client
 	io.ReadCloser
 	err error
 	throttle <-chan time.Time
@@ -90,12 +67,12 @@ type reader struct {
 	closed bool
 }
 
-func (r *reader) Close() error {
+func (r *Reader) Close() error {
 	r.closed = true
 	return nil
 }
 
-func (r *reader) start() {
+func (r *Reader) start() {
 	for {
 		<-r.throttle
 
@@ -111,7 +88,7 @@ func (r *reader) start() {
 	}
 }
 
-func (r *reader) read() error {
+func (r *Reader) read() error {
 	s, err := r.l.searchFunc()
 	if err != nil {
 		return err
@@ -121,30 +98,7 @@ func (r *reader) read() error {
 	return nil
 }
 
-func (r *reader) read1() error {
-	termQuery := elastic.NewTermQuery("docker.container_id", r.cid)
-	results, err := r.client.Search().Index(r.index).
-	Query(termQuery).
-	Sort("@timestamp", false).
-	From(0).Size(10).
-	Pretty(true).
-	Do(r.ctx)
-	if err != nil {
-		return err
-	}
-
-	for _, hit := range results.Hits.Hits {
-		b, err := hit.Source.MarshalJSON()
-		if err != nil {
-			return err
-		}
-		r.b.Write(b)
-		r.pos += int64(len(b))
-	}
-
-	return nil
-}
-func (r *reader) Read(b []byte) (int, error) {
+func (r *Reader) Read(b []byte) (int, error) {
 	if r.err != nil {
 		return 0, r.err
 	}

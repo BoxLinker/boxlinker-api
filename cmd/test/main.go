@@ -83,16 +83,8 @@ type Entity struct {
 }
 
 func getLogger(ctx context.Context) logs.Logger {
-	client, err := elastic.NewClient(elastic.SetURL("https://es.boxlinker.com"))
-	if err != nil {
-		panic(err)
-	}
 
 	return es.NewLogger(&es.LoggerOptions{
-		Client: client,
-		ContainerID: "d73e02f27f3fa070c53a3408c8f6f25d30cc6138636b937d22bf21c8474b1754",
-		ElasticIndex: "logstash-2017.11.11",
-		Context: ctx,
 		SearchFunc: func() (string, error) {
 			res, err := httplib.Get(fmt.Sprintf(
 				"https://es.boxlinker.com/%s/fluentd/_search?filter_path=took,hits.hits._id,hits.hits._score,hits.hits._source.log,hits.hits._source.@timestamp",
