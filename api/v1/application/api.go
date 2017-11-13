@@ -106,6 +106,7 @@ func (a *Api) Run() error {
 	serviceRouter := mux.NewRouter()
 	serviceRouter.HandleFunc("/v1/application/auth/service", a.CreateService).Methods("POST")
 	serviceRouter.HandleFunc("/v1/application/auth/service", a.QueryService).Methods("GET")
+	serviceRouter.HandleFunc("/v1/application/auth/service/{name}", a.GetService).Methods("GET")
 	serviceRouter.HandleFunc("/v1/application/auth/service/{name}", a.UpdateService).Methods("PUT")
 	serviceRouter.HandleFunc("/v1/application/auth/service/{name}", a.DeleteService).Methods("DELETE")
 	serviceRouter.HandleFunc("/v1/application/auth/service/{name}/exists", a.IsServiceExist).Methods("GET")

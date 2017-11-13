@@ -217,6 +217,17 @@ func (a *Api) UpdateService(w http.ResponseWriter, r *http.Request) {
 	boxlinker.Resp(w, boxlinker.STATUS_OK, deploy)
 }
 
+func (a *Api) GetService(w http.ResponseWriter, r *http.Request) {
+	user := a.getUserInfo(r)
+	svcName := mux.Vars(r)["name"]
+	svc, err := a.clientSet.CoreV1().Services(user.Name).Get(svcName, metav1.GetOptions{})
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
+		return
+	}
+	boxlinker.Resp(w, boxlinker.STATUS_OK, svc)
+}
+
 func (a *Api) QueryService(w http.ResponseWriter, r *http.Request) {
 	user := a.getUserInfo(r)
 	pc := boxlinker.ParsePageConfig(r)

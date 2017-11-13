@@ -13,7 +13,6 @@ import (
 	"github.com/cabernety/gopkg/stream"
 	"github.com/BoxLinker/boxlinker-api/modules/logs/es"
 	"github.com/BoxLinker/boxlinker-api/modules/logs"
-	"github.com/xuyuntech/wechatshop"
 	"github.com/cabernety/gopkg/httplib"
 	"io/ioutil"
 )
@@ -173,7 +172,7 @@ func main(){
 		logger := getLogger(ctx)
 		reader, err := logger.Open("")
 		if err != nil {
-			xuyuntech.Resp(rw, xuyuntech.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
+			//xuyuntech.Resp(rw, xuyuntech.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
 			return
 		}
 		//go getLogs(ctx)

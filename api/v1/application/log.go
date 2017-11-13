@@ -4,15 +4,14 @@ import (
 	"net/http"
 	"github.com/BoxLinker/boxlinker-api"
 	"fmt"
-	"github.com/BoxLinker/boxlinker-api/modules/logs/es"
 	"io/ioutil"
 	"github.com/cabernety/gopkg/httplib"
+	"github.com/cabernety/gopkg/stream"
+	streamhttp "github.com/cabernety/gopkg/stream/http"
 	"time"
-	"io"
 	"github.com/gorilla/mux"
 	"encoding/json"
 	"github.com/Sirupsen/logrus"
-	"errors"
 )
 
 type Result struct {
@@ -29,25 +28,97 @@ type Hit struct {
 	} `json:"_source"`
 }
 
-type lreader struct {
-	done chan struct{}
-	reader io.Reader
-	bufCh chan []byte
+type esReader struct {
+	containerID string
+	startTime string
+	notify chan []byte
 	errCh chan error
+	end bool
 }
 
-func (r *lreader) start(){
-	buf := make([]byte, 32*1024)
+func newESReader(containerID, startTime string, notify chan []byte) (*esReader, chan error) {
+	errCh := make(chan error)
+	return &esReader{
+		containerID: containerID,
+		startTime: startTime,
+		end: false,
+		notify: notify,
+		errCh: errCh,
+	}, errCh
+}
+
+func (r *esReader) stop() {
+	r.end = true
+}
+
+func (r *esReader) start() {
 	for {
-		nr, er := r.reader.Read(buf)
-		if nr > 0 {
-			r.bufCh <- buf[0:nr]
-		}
-		if er != nil {
-			r.errCh <- er
+		if r.end {
 			break
 		}
+		b, err := r.read()
+		if err != nil {
+			r.errCh <-err
+			break
+		}
+
+		// 解析结果，并获取最后一条的时间戳
+		var result Result
+		if err := json.Unmarshal(b, &result); err != nil {
+			r.errCh <-err
+			break
+		}
+		hits := result.Hits.Hits
+		if len(hits) <= 0 {
+			time.Sleep(time.Second*3)
+			continue
+		}
+		hit := hits[len(hits) - 1]
+		r.startTime = hit.Source.Timestamp
+		r.notify <-b
+		time.Sleep(time.Second*3)
 	}
+}
+
+func (r *esReader) read() ([]byte, error) {
+	containerID := r.containerID
+	startTime := r.startTime
+	res, err := httplib.Get(fmt.Sprintf(
+		"https://es.boxlinker.com/%s/fluentd/_search?filter_path=took,hits.hits._id,hits.hits._source.log,hits.hits._source.@timestamp",
+		fmt.Sprintf("logstash-%s", time.Now().Format("2006.01.02")),
+	)).Body(fmt.Sprintf(
+		`
+				{
+				  "query": {
+					"bool": {
+					  "filter": [{
+						"term": {
+						  "docker.container_id": "%s"
+						}
+					  },{
+						"range": {
+						  "@timestamp": {
+							"gt": "%s",
+							"lte": "now"
+						  }
+						}
+					  }]
+					}
+				  }
+				}
+			`,
+		containerID,
+		startTime,
+	)).SetTimeout(time.Second*10, time.Second*10).Response()
+	if err != nil {
+		return nil, err
+	}
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
 }
 
 /**
@@ -63,125 +134,43 @@ func (a *Api) Log(w http.ResponseWriter, r *http.Request){
 		startTime = "now-5m" // 默认获取 5 分钟以内的
 	}
 
-	logger := es.NewLogger(&es.LoggerOptions{
-		SearchFunc: func() (string, error) {
-			logrus.Debugf("request elasticsearch with containerID(%s) and startTime(%s)", containerID, startTime)
-			res, err := httplib.Get(fmt.Sprintf(
-				"https://es.boxlinker.com/%s/fluentd/_search?filter_path=took,hits.hits._id,hits.hits._source.log,hits.hits._source.@timestamp",
-				"logstash-2017.11.11",
-			)).Body(fmt.Sprintf(
-				`
-						{
-						  "query": {
-							"bool": {
-							  "filter": [{
-								"term": {
-								  "docker.container_id": "%s"
-								}
-							  },{
-								"range": {
-								  "@timestamp": {
-									"gte": "%s",
-									"lte": "now"
-								  }
-								}
-							  }]
-							}
-						  }
-						}
-					`,
-				containerID,
-				startTime,
-			)).SetTimeout(time.Second*10, time.Second*10).Response()
-			if err != nil {
-				return "", err
-			}
-			b, err := ioutil.ReadAll(res.Body)
-			if err != nil {
-				return "", err
-			}
 
-			// 解析结果，并获取最后一条的时间戳
-			var result Result
-			if err := json.Unmarshal(b, &result); err != nil {
-				return "", err
-			}
-			hits := result.Hits.Hits
-			if len(hits) <= 0 {
-				return "", nil
-			}
-			hit := hits[len(hits) - 1]
-			startTime = hit.Source.Timestamp
-
-			return string(b), nil
-		},
-	})
-
-	rr, err := logger.Open("")
-	if err != nil {
-		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
-		return
-	}
 
 	w.Header().Set("Content-Type", "text/plain")
 	// Chrome won't show data if we don't set this. See
 	// http://stackoverflow.com/questions/26164705/chrome-not-handling-chunked-responses-like-firefox-safari.
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
+	rw := streamhttp.StreamingResponseWriter(w)
+	defer close(stream.Heartbeat(w, time.Second*25)) // Send a null character every 25 seconds.
+
 	disconnectNotify := w.(http.CloseNotifier).CloseNotify()
 	bufCh := make(chan []byte)
-	errCh := make(chan error)
-	exitCh := make(chan error)
+	//errCh := make(chan error)
+	//exitCh := make(chan error)
 
-	go func(){
-		buf := make([]byte, 32*1024)
-		defer logrus.Debug("===>>>>>")
-		for {
-			nr, er := rr.Read(buf)
-			logrus.Debugf("read %d", nr)
-			if nr > 0 {
-				bufCh <- buf[0:nr]
-			}
-			if er != nil {
-				errCh <- er
-				break
-			}
+	esr, errCh := newESReader(containerID, startTime, bufCh)
+	go esr.start()
+
+	done := false
+
+	for {
+		if done {
+			break
 		}
-	}()
-
-	select {
-	case buf := <-bufCh:
-		logrus.Debugf("buf: %s", string(buf))
-		w.Write(buf)
-	case <-disconnectNotify:
-		logrus.Debug("disconnectNotify")
-		rr.(*es.Reader).Close()
-		exitCh <- errors.New("disconnectNotify")
-		break
-	case err := <-errCh:
-		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
-		break
+		select {
+		case buf := <-bufCh:
+			logrus.Debug(string(buf))
+			rw.Write(buf)
+		case <-disconnectNotify:
+			esr.stop()
+			done = true
+			break
+		case err := <-errCh:
+			done = true
+			boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
+			break
+		}
 	}
-
-
-	go func(){
-
-	}()
-
-
-	//rw := streamhttp.StreamingResponseWriter(w)
-	//defer close(stream.Heartbeat(w, time.Second*25)) // Send a null character every 25 seconds.
-	//
-	//go func(){
-	//	select {
-	//	case <-disconnectNotify:
-	//	}
-	//}()
-	//
-	//if _, err := io.Copy(rw, rr); err != nil {
-	//	boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
-	//	return
-	//}
-
 
 }
