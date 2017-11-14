@@ -162,6 +162,7 @@ func (a *Api) Log(w http.ResponseWriter, r *http.Request){
 		case buf := <-bufCh:
 			logrus.Debug(string(buf))
 			rw.Write(buf)
+			//io.WriteString(w, string(buf))
 		case <-disconnectNotify:
 			esr.stop()
 			done = true

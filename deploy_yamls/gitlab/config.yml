@@ -1,0 +1,38 @@
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: gitlab
+  namespace: boxlinker
+spec:
+  serviceName: "gitlab"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: gitlab
+    spec:
+      terminationGracePeriodSeconds: 10
+      nodeSelector:
+        role: system
+      imagePullSecrets:
+      - name: registry-key
+      containers:
+        - name: mariadb
+          #image: mariadb:10.1.22@sha256:21afb9ab191aac8ced2e1490ad5ec6c0f1c5704810d73451dd124670bcacfb14
+          image: index.boxlinker.com/library/gitlab-ce:latest
+          ports:
+            - containerPort: 80
+              name: web
+            - containerPort: 22
+              name: ssh
+          volumeMounts:
+            - name: data
+              mountPath: /var/opt/gitlab
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 10Gi
