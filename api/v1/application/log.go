@@ -70,13 +70,14 @@ func (r *esReader) start() {
 		}
 		hits := result.Hits.Hits
 		if len(hits) <= 0 {
-			time.Sleep(time.Second*3)
+			time.Sleep(time.Second / 10)
 			continue
 		}
-		hit := hits[len(hits) - 1]
-		r.startTime = hit.Source.Timestamp
-		r.notify <-b
-		time.Sleep(time.Second*3)
+		r.startTime = hits[len(hits) - 1].Source.Timestamp
+		for _, hit := range hits {
+			r.notify <-[]byte(hit.Source.Log)
+		}
+		time.Sleep(time.Second / 10)
 	}
 }
 
@@ -164,12 +165,15 @@ func (a *Api) Log(w http.ResponseWriter, r *http.Request){
 			rw.Write(buf)
 			//io.WriteString(w, string(buf))
 		case <-disconnectNotify:
+			logrus.Debug("disconnectNotify")
 			esr.stop()
 			done = true
 			break
 		case err := <-errCh:
+			logrus.Debug("esReader err")
+			esr.stop()
 			done = true
-			boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			break
 		}
 	}
