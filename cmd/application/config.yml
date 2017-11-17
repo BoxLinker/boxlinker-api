@@ -17,6 +17,8 @@ db:
 auth:
   tokenAuthUrl: "https://api.boxlinker.com/v1/user/account/authToken"
   basicAuthUrl: "https://api.boxlinker.com/v1/user/auth/basicAuth"
+monitor:
+  url: "https://prometheus.boxlinker.com"
 podConfigure:
 - memory: "64Mi"
   cpu: "200"

@@ -59,6 +59,9 @@ type Config struct {
 		TokenAuthUrl string `yaml:"tokenAuthUrl,omitempty"`
 		BasicAuthUrl string `yaml:"basicAuthUrl,omitempty"`
 	} `yaml:"auth,omitempty"`
+	Monitor struct{
+		URL string `yaml:"url,omitempty"`
+	} `yaml:"monitor,omitempty"`
 	PodConfigure []struct{
 		Memory string `yaml:"memory,omitempty"`
 		CPU string `yaml:"cpu,omitempty"`
@@ -117,6 +120,7 @@ func (a *Api) Run() error {
 	serviceRouter.HandleFunc("/v1/application/auth/volume/{name}", a.DeleteVolume).Methods("DELETE")
 
 	serviceRouter.HandleFunc("/v1/application/auth/log/{containerID}", a.Log).Methods("GET")
+	serviceRouter.HandleFunc("/v1/application/auth/monitor/{serviceName}", a.Monitor).Methods("GET")
 
 	authRouter := negroni.New()
 	authRouter.Use(negroni.HandlerFunc(apiAuthRequired.HandlerFuncWithNext))
