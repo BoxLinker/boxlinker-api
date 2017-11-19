@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	"github.com/BoxLinker/boxlinker-api"
 	"encoding/json"
+	"github.com/BoxLinker/boxlinker-api/modules/monitor"
 )
 
 type ApplicationManager interface {
@@ -25,12 +26,14 @@ type ApplicationManager interface {
 	DeleteVolume(namespace, name string) error
 	CreateVolume(namespace string, volume *models.Volume) (*apiv1.PersistentVolumeClaim, error)
 	QueryVolume(namespace string, pc boxlinker.PageConfig) ([]apiv1.PersistentVolumeClaim, error)
+
 }
 
 type DefaultApplicationManager struct {
 	DefaultManager
 	engine *xorm.Engine
 	clientSet *kubernetes.Clientset
+	prometheusMonitor *monitor.PrometheusMonitor
 }
 
 func (m *DefaultApplicationManager) GetServiceByName(namespace, svcName string) (bool, error, *apiv1.Service, *extv1beta1.Ingress, *appsv1beta1.Deployment) {
@@ -132,9 +135,10 @@ func (m *DefaultApplicationManager) SyncPodConfigure(pcs []*appModels.PodConfigu
 	return i, sess.Commit()
 }
 
-func NewApplicationManager(engine *xorm.Engine, clientSet *kubernetes.Clientset) (ApplicationManager, error) {
+func NewApplicationManager(engine *xorm.Engine, clientSet *kubernetes.Clientset, pm *monitor.PrometheusMonitor) (ApplicationManager, error) {
 	return &DefaultApplicationManager{
 		engine: engine,
 		clientSet: clientSet,
+		prometheusMonitor: pm,
 	}, nil
 }

@@ -3,24 +3,15 @@ package application
 import (
 	"net/http"
 	"github.com/gorilla/mux"
-	"github.com/cabernety/gopkg/httplib"
 	"fmt"
 	"github.com/BoxLinker/boxlinker-api"
 	"time"
-	"io/ioutil"
-	"encoding/json"
-	"github.com/Sirupsen/logrus"
+	"github.com/BoxLinker/boxlinker-api/modules/monitor"
 )
 
-type prometheusResult struct {
-	Status string `json:"status"`
-	Data struct{
-		ResultType string `json:"resultType"`
-		Result []struct{
-			Metric map[string]interface{} `json:"metric"`
-			Values [][]interface{} `json:"values"`
-		} `json:"result"`
-	} `json:"data"`
+type rResult struct{
+	Result [][]interface{}	`json:"result"`
+	Err string `json:"err"`
 }
 
 func (a *Api) Monitor(w http.ResponseWriter, r *http.Request) {
@@ -28,6 +19,7 @@ func (a *Api) Monitor(w http.ResponseWriter, r *http.Request) {
 	serviceName := mux.Vars(r)["serviceName"]
 	start := boxlinker.GetQueryParam(r, "start")
 	end := boxlinker.GetQueryParam(r, "end")
+	step := boxlinker.GetQueryParam(r, "step")
 
 	if _, err := time.Parse("2006-01-02T15:04:05.000Z", start); err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_PARAM_ERR, nil, "start param err")
@@ -37,38 +29,46 @@ func (a *Api) Monitor(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_PARAM_ERR, nil, "end param err")
 		return
 	}
-
-	res, err := httplib.Get(fmt.Sprintf("%s/api/v1/query_range", a.config.Monitor.URL)).
-		Param("query", fmt.Sprintf(
-			"container_memory_usage_bytes{container_name=\"%s\",namespace=\"%s\"}",
-			serviceName, user.Name)).
-		Param("start", start).
-		Param("end", end).
-		Param("step", "15s").Response()
-	if err != nil {
-		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, err.Error())
-		return
+	monitorOps := &monitor.Options{
+		Start: start,
+		End: end,
+		Step: step,
 	}
+	output := make(map[string]*rResult)
 
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, err.Error())
-		return
-	}
-	var result prometheusResult
-	if err := json.Unmarshal(b, &result); err != nil {
-		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, err.Error())
-		return
-	}
 
-	if result.Status == "success" && result.Data.ResultType == "matrix" {
-		if len(result.Data.Result) == 1 {
-			boxlinker.Resp(w, boxlinker.STATUS_OK, result.Data.Result[0].Values)
-			return
+	if re, err := a.prometheusMonitor.Query(fmt.Sprintf("sum(container_memory_usage_bytes{container_name=\"%s\",namespace=\"%s\"}) by (container_name)", serviceName, user.Name), monitorOps); err != nil {
+		output["memory"] = &rResult{
+			Err: err.Error(),
+		}
+	} else {
+		output["memory"] = &rResult{
+			Result: re.GetValues(),
 		}
 	}
-	logrus.Warnf("prometheus search err, result -> \n %+v", result)
+	if re, err := a.prometheusMonitor.Query(fmt.Sprintf(
+		"sum(rate(container_network_receive_bytes_total{pod_name=~\"%s-.*\",namespace=\"%s\",interface=\"eth0\"}[1h])) by (container_name)",
+			serviceName, user.Name), monitorOps); err != nil {
+		output["networkReceive"] = &rResult{
+			Err: err.Error(),
+		}
+	} else {
+		output["networkReceive"] = &rResult{
+			Result: re.GetValues(),
+		}
+	}
+	if re, err := a.prometheusMonitor.Query(fmt.Sprintf(
+		"sum(rate(container_network_transmit_bytes_total{pod_name=~\"%s-.*\",namespace=\"%s\",interface=\"eth0\"}[1h])) by (container_name)",
+			serviceName, user.Name), monitorOps); err != nil {
+		output["networkTransmit"] = &rResult{
+			Err: err.Error(),
+		}
+	} else {
+		output["networkTransmit"] = &rResult{
+			Result: re.GetValues(),
+		}
+	}
 
-	boxlinker.Resp(w, boxlinker.STATUS_FAILED, result)
+	boxlinker.Resp(w, boxlinker.STATUS_OK, output)
 
 }
