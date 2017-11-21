@@ -15,6 +15,7 @@ import (
 	"flag"
 	"path/filepath"
 	"k8s.io/client-go/rest"
+	"github.com/BoxLinker/boxlinker-api/modules/monitor"
 )
 
 var flags = []cli.Flag{
@@ -110,7 +111,12 @@ func action(c *cli.Context) error {
 		return fmt.Errorf("new db engine err: %v", err)
 	}
 
-	controllerManager, err := manager.NewApplicationManager(engine, clientSet)
+	// monitor
+	pm := &monitor.PrometheusMonitor{
+		Host: config.Monitor.URL,
+	}
+
+	controllerManager, err := manager.NewApplicationManager(engine, clientSet, pm)
 	if err != nil {
 		return fmt.Errorf("new controller manager err: %v", err)
 	}
@@ -119,6 +125,7 @@ func action(c *cli.Context) error {
 		Config: config,
 		ControllerManager: controllerManager,
 		ClientSet: clientSet,
+		PrometheusMonitor: pm,
 	})
 
 	if err != nil {

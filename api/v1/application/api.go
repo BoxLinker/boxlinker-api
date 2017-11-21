@@ -15,18 +15,21 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/codegangsta/negroni"
 	"k8s.io/client-go/kubernetes"
+	"github.com/BoxLinker/boxlinker-api/modules/monitor"
 )
 
 type Api struct {
 	config *Config
 	manager manager.ApplicationManager
 	clientSet *kubernetes.Clientset
+	prometheusMonitor *monitor.PrometheusMonitor
 }
 
 type ApiConfig struct {
 	Config *Config
 	ControllerManager manager.ApplicationManager
 	ClientSet *kubernetes.Clientset
+	PrometheusMonitor *monitor.PrometheusMonitor
 }
 
 func NewApi(config ApiConfig) (*Api, error) {
@@ -34,6 +37,7 @@ func NewApi(config ApiConfig) (*Api, error) {
 		config: config.Config,
 		manager: config.ControllerManager,
 		clientSet: config.ClientSet,
+		prometheusMonitor: config.PrometheusMonitor,
 	}
 	// check PodConfigure
 	if err := aApi.checkPodConfigure(); err != nil {
