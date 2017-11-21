@@ -66,6 +66,10 @@ func (a *Api) Run() error {
 	accountAuthRouter.UseHandler(accountRouter)
 	globalMux.Handle("/v1/user/account/", accountAuthRouter)
 
+	authorizeRouter := mux.NewRouter()
+	authorizeRouter.HandleFunc("/v1/user/authorize", a.AuthCodeBase).Methods("GET", "POST")
+	globalMux.Handle("/v1/user/authorize", authorizeRouter)
+
 	s := &http.Server{
 		Addr:    a.listen,
 		Handler: context.ClearHandler(cs.Handler(globalMux)),

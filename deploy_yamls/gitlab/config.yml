@@ -17,14 +17,30 @@ spec:
       imagePullSecrets:
       - name: registry-key
       containers:
-        - name: mariadb
-          #image: mariadb:10.1.22@sha256:21afb9ab191aac8ced2e1490ad5ec6c0f1c5704810d73451dd124670bcacfb14
+        - name: gitlab
           image: index.boxlinker.com/library/gitlab-ce:latest
           ports:
             - containerPort: 80
               name: web
             - containerPort: 22
               name: ssh
+          env:
+            - name: GITLAB_ROOT_PASSWORD
+              value: "Box1inkerGitlabPassword"
+            - name: GITLAB_HOST
+              value: "https://git.boxlinker.com"
+            - name: GITLAB_HOST
+              value: "development"
+            - name: GITLAB_DATABASE_ADAPTER
+              value: "mysql2"
+            - name: GITLAB_DATABASE_USERNAME
+              value: "boxlinker"
+            - name: GITLAB_DATABASE_PASSWORD
+              value: "FB07ObC7xeTu"
+            - name: GITLAB_DATABASE_HOST
+              value: "mysql"
+            - name: GITLAB_DATABASE_PORT
+              value: 3306
           volumeMounts:
             - name: data
               mountPath: /var/opt/gitlab
