@@ -64,7 +64,7 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
 		return
 	} else if found {
-		boxlinker.Resp(w, boxlinker.STATUS_USER_EXISTS, nil)
+		boxlinker.Resp(w, boxlinker.STATUS_USER_EXISTS, nil, fmt.Sprintf("用户 %s 已经存在.", form.Username))
 		return
 	}
 
@@ -73,7 +73,7 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
 		return
 	} else if found {
-		boxlinker.Resp(w, boxlinker.STATUS_EMAIL_EXISTS, nil)
+		boxlinker.Resp(w, boxlinker.STATUS_EMAIL_EXISTS, nil, fmt.Sprintf("邮箱 %s 已经存在.", form.Email))
 		return
 	}
 
