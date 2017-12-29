@@ -22,6 +22,7 @@ type UserManager interface {
 	GetUserByName(username string) (*userModels.User, error)
 	GetUserById(id string) (*userModels.User)
 	GetUsers(pageConfig boxlinker.PageConfig) ([]*userModels.User, error)
+	GetUserByEmail(email string)(*userModels.User, error)
 	SaveUser(user *userModels.User) error
 
 	SaveUserToBeConfirmed(user *userModels.UserToBeConfirmed) error
@@ -71,6 +72,7 @@ func NewUserManager(engine *xorm.Engine, authenticator auth.Authenticator) (User
 		engine: engine,
 	}, nil
 }
+
 
 func (m DefaultUserManager) VerifyUsernamePassword(username, password, hash string) (bool, error) {
 	//hash, err := mAuth.Hash(password)
@@ -195,6 +197,19 @@ func (m DefaultUserManager) GetUserByName(username string) (*userModels.User, er
 	if _, err := m.engine.Get(u); err != nil {
 		log.Debugf("GetUserByName err: %s", err.Error())
 		return nil, err
+	}
+	return u, nil
+}
+
+func (m DefaultUserManager) GetUserByEmail(email string)(*userModels.User, error) {
+	u := &userModels.User{
+		Email: email,
+	}
+	if has, err := m.engine.Get(u); err != nil {
+		log.Debugf("GetUserByEmail err: %s", err.Error())
+		return nil, err
+	} else if !has {
+		return nil, nil
 	}
 	return u, nil
 }

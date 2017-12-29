@@ -29,7 +29,7 @@ type Opts struct {
 	MergeRef    bool     // Clone pull requests using the merge ref.
 }
 
-func New(opts Opts) (codebase.CodeBase, error) {
+func New(opts Opts) (scm.CodeBase, error) {
 	url_, err := url.Parse(opts.URL)
 	if err != nil {
 		return nil, err

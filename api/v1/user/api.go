@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
 	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	mAuth "github.com/BoxLinker/boxlinker-api/controller/middleware/auth"
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/negroni"
@@ -15,20 +16,25 @@ import (
 type ApiOptions struct {
 	Listen string
 	Manager manager.UserManager
+	Config *ApiConfig
+}
+
+type ApiConfig struct {
+	ResetPassCallbackURI string
 	SendEmailUri string
 }
 
 type Api struct {
 	listen string
 	manager manager.UserManager
-	sendEmailUri string
+	config *ApiConfig
 }
 
 func NewApi(config ApiOptions) *Api {
 	return &Api{
 		listen: config.Listen,
 		manager: config.Manager,
-		sendEmailUri: config.SendEmailUri,
+		config: config.Config,
 	}
 }
 // get 	/v1/user/auth/token
@@ -59,12 +65,22 @@ func (a *Api) Run() error {
 	accountRouter := mux.NewRouter()
 	accountRouter.HandleFunc("/v1/user/account/authToken", a.AuthToken).Methods("GET")
 	accountRouter.HandleFunc("/v1/user/account/list", a.GetUsers).Methods("GET")
+	// 登录后的修改密码
 	accountRouter.HandleFunc("/v1/user/account/changepassword", a.ChangePassword).Methods("PUT")
 	accountRouter.HandleFunc("/v1/user/account/userinfo", a.GetUser).Methods("GET")
+	// 忘记密码的修改密码
+	accountRouter.HandleFunc("/v1/user/account/pass_reset", a.ResetPassword).Methods("POST")
 	accountAuthRouter := negroni.New()
 	accountAuthRouter.Use(negroni.HandlerFunc(apiAuthRequired.HandlerFuncWithNext))
 	accountAuthRouter.UseHandler(accountRouter)
 	globalMux.Handle("/v1/user/account/", accountAuthRouter)
+
+	passRouter := mux.NewRouter()
+	// 忘记密码的发送邮件
+	passRouter.HandleFunc("/v1/user/pub/pass/send_email", a.SendForgotEmail).Methods("POST")
+	pubRouter := negroni.New()
+	pubRouter.UseHandler(passRouter)
+	globalMux.Handle("/v1/user/pub/", pubRouter)
 
 	s := &http.Server{
 		Addr:    a.listen,
@@ -74,4 +90,19 @@ func (a *Api) Run() error {
 	log.Infof("Server listen on: %s", a.listen)
 
 	return s.ListenAndServe()
+}
+
+func (a *Api) getUserInfo(r *http.Request) *userModels.User {
+	us := r.Context().Value("user")
+	if us == nil {
+		return nil
+	}
+	ctx := us.(map[string]interface{})
+	if ctx == nil || ctx["uid"] == nil {
+		return nil
+	}
+	return &userModels.User{
+		Id: ctx["uid"].(string),
+		Name: ctx["username"].(string),
+	}
 }

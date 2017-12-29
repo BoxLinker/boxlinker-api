@@ -6,7 +6,6 @@ import (
 	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	"github.com/Sirupsen/logrus"
 	"fmt"
-	"encoding/base64"
 )
 
 func (a *Api) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +55,7 @@ func (a *Api) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 		logrus.Warnf("DeleteUsersToBeConfirmedByName err: %v, after save user", err)
 	}
 
-	http.Redirect(w, r, fmt.Sprintf("https://www.boxlinker.com/login.html?reg_confirmed_token=%s", base64.StdEncoding.EncodeToString([]byte(u.Name))), http.StatusPermanentRedirect)
+	http.Redirect(w, r, fmt.Sprintf("https://console.boxlinker.com/login?reg_confirmed_username=%s", u.Name), http.StatusPermanentRedirect)
 	//w.Write([]byte("confirm user success: "+u1.Id+" "+ u1.Name))
 
 }

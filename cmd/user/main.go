@@ -6,6 +6,7 @@ import (
 	"github.com/BoxLinker/boxlinker-api/controller/manager"
 	"github.com/BoxLinker/boxlinker-api/auth/builtin"
 	api "github.com/BoxLinker/boxlinker-api/api/v1/user"
+	_ "github.com/joho/godotenv/autoload"
 
 	"os"
 	settings "github.com/BoxLinker/boxlinker-api/settings/user"
@@ -26,6 +27,10 @@ var (
 			Name: "send-email-uri",
 			Value: "http://localhost:8081/v1/email/send",
 			EnvVar: "SEND_EMAIL_URI",
+		},
+		cli.StringFlag{
+			Name: "reset-pass-callback-uri",
+			EnvVar: "RESET_PASS_CALLBACK_URI",
 		},
 		cli.StringFlag{
 			Name: "verify-email-uri",
@@ -114,7 +119,10 @@ func action(c *cli.Context) error {
 	return api.NewApi(api.ApiOptions{
 		Listen: c.String("listen"),
 		Manager: controllerManager,
-		SendEmailUri: c.String("send-email-uri"),
+		Config: &api.ApiConfig{
+			ResetPassCallbackURI: c.String("reset-pass-callback-uri"),
+			SendEmailUri: c.String("send-email-uri"),
+		},
 	}).Run()
 
 }

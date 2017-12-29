@@ -118,8 +118,8 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("email form marshal err: %v", err))
 		return
 	}
-	logrus.Debugf("send email to: %s", a.sendEmailUri)
-	resp, err := httplib.Post(a.sendEmailUri).Body(b).Response()
+	logrus.Debugf("send email to: %s", a.config.SendEmailUri)
+	resp, err := httplib.Post(a.config.SendEmailUri).Body(b).Response()
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("send email err: %v", err))
 		return
