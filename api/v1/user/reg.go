@@ -140,24 +140,6 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("send email parse body err: %v", err))
 		return
 	}
-	// 向 application 服务发送注册成功消息，新建 namespace
-	// TODO API 用的 token 的 token_key 应该和 user 分开
-	apiToken, _ := a.manager.GenerateToken("0", "boxlinker", time.Now().Add(time.Minute*3).Unix())
-	regMsg := map[string]string{
-		"username": form.Username,
-	}
-	bA, _ := json.Marshal(regMsg)
-	res, err := httplib.Post(a.config.SendRegMessageAPI).Header("X-Access-Token", apiToken).Body(bA).Response()
-	if err != nil {
-		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("创建 namespace 错误: %v", err))
-		return
-	}
-
-	status, msg, results, _ = boxlinker.ParseResp(res.Body)
-	if status != boxlinker.STATUS_OK {
-		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, results, fmt.Sprintf("创建 namespace 失败: %s", msg))
-		return
-	}
 
 	boxlinker.Resp(w, status, nil, msg)
 }

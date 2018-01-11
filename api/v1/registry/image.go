@@ -318,7 +318,7 @@ func (a *Api) RegistryEvent(w http.ResponseWriter, r *http.Request){
 		logrus.Debugf("------------------------------")
 		logrus.Debugf("deal with event: %+v", event)
 		if event.Action != "push" {
-			logrus.Debugf("event: %s detected pass")
+			logrus.Debugf("event: %s detected pass", event.Action)
 			continue
 		}
 		// image 格式为 {namespace}/{imageName}:{tag}

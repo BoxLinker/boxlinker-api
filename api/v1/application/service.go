@@ -322,6 +322,7 @@ func (a *Api) CreateService(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logrus.Debugf("Create Service form: (%+v)", form)
+	// todo 检查 memory 参数，格式应为 64Mi
 	memoryQuantity, err := resource.ParseQuantity(form.Memory)
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_FAILED, nil, fmt.Sprintf("memory param (%s) is invalid", form.Memory))
