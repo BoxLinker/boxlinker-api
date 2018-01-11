@@ -1,42 +1,43 @@
 package application
 
 import (
-	"io/ioutil"
-	"gopkg.in/yaml.v2"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
+	"github.com/BoxLinker/boxlinker-api"
 	"github.com/BoxLinker/boxlinker-api/controller/manager"
 	tAuth "github.com/BoxLinker/boxlinker-api/controller/middleware/auth_token"
-	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	appModels "github.com/BoxLinker/boxlinker-api/controller/models/application"
-	"net/http"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
+	"github.com/BoxLinker/boxlinker-api/modules/monitor"
 	"github.com/Sirupsen/logrus"
-	"github.com/BoxLinker/boxlinker-api"
+	"github.com/codegangsta/negroni"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
-	"github.com/codegangsta/negroni"
+	"gopkg.in/yaml.v2"
 	"k8s.io/client-go/kubernetes"
-	"github.com/BoxLinker/boxlinker-api/modules/monitor"
 )
 
 type Api struct {
-	config *Config
-	manager manager.ApplicationManager
-	clientSet *kubernetes.Clientset
+	config            *Config
+	manager           manager.ApplicationManager
+	clientSet         *kubernetes.Clientset
 	prometheusMonitor *monitor.PrometheusMonitor
 }
 
 type ApiConfig struct {
-	Config *Config
+	Config            *Config
 	ControllerManager manager.ApplicationManager
-	ClientSet *kubernetes.Clientset
+	ClientSet         *kubernetes.Clientset
 	PrometheusMonitor *monitor.PrometheusMonitor
 }
 
 func NewApi(config ApiConfig) (*Api, error) {
 	aApi := &Api{
-		config: config.Config,
-		manager: config.ControllerManager,
-		clientSet: config.ClientSet,
+		config:            config.Config,
+		manager:           config.ControllerManager,
+		clientSet:         config.ClientSet,
 		prometheusMonitor: config.PrometheusMonitor,
 	}
 	// check PodConfigure
@@ -48,27 +49,27 @@ func NewApi(config ApiConfig) (*Api, error) {
 
 type Config struct {
 	Server struct {
-		Addr string `yaml:"addr,omitempty"`
-		Debug bool `yaml:"debug"`
-	}    `yaml:"server,omitempty"`
+		Addr  string `yaml:"addr,omitempty"`
+		Debug bool   `yaml:"debug"`
+	} `yaml:"server,omitempty"`
 	InCluster bool `yaml:"inCluster"`
-	DB struct{
-		Host string `yaml:"host,omitempty"`
-		Port int `yaml:"port,omitempty"`
-		User string `yaml:"user,omitempty"`
+	DB        struct {
+		Host     string `yaml:"host,omitempty"`
+		Port     int    `yaml:"port,omitempty"`
+		User     string `yaml:"user,omitempty"`
 		Password string `yaml:"password,omitempty"`
-		Name string `yaml:"name,omitempty"`
+		Name     string `yaml:"name,omitempty"`
 	} `yaml:"db,omitempty"`
-	Auth struct{
+	Auth struct {
 		TokenAuthUrl string `yaml:"tokenAuthUrl,omitempty"`
 		BasicAuthUrl string `yaml:"basicAuthUrl,omitempty"`
 	} `yaml:"auth,omitempty"`
-	Monitor struct{
+	Monitor struct {
 		URL string `yaml:"url,omitempty"`
 	} `yaml:"monitor,omitempty"`
-	PodConfigure []struct{
+	PodConfigure []struct {
 		Memory string `yaml:"memory,omitempty"`
-		CPU string `yaml:"cpu,omitempty"`
+		CPU    string `yaml:"cpu,omitempty"`
 	} `yaml:"podConfigure,omitempty"`
 }
 
@@ -92,7 +93,7 @@ func (a *Api) checkPodConfigure() error {
 	for _, c := range configs {
 		podConfigures = append(podConfigures, &appModels.PodConfigure{
 			Memory: c.Memory,
-			CPU: c.CPU,
+			CPU:    c.CPU,
 		})
 	}
 	nums, err := a.manager.SyncPodConfigure(podConfigures)
@@ -126,13 +127,15 @@ func (a *Api) Run() error {
 	serviceRouter.HandleFunc("/v1/application/auth/log/{containerID}", a.Log).Methods("GET")
 	serviceRouter.HandleFunc("/v1/application/auth/monitor/{serviceName}", a.Monitor).Methods("GET")
 
+	serviceRouter.HandleFunc("/v1/application/auth/event/{type}", a.Monitor).Methods("POST")
+
 	authRouter := negroni.New()
 	authRouter.Use(negroni.HandlerFunc(apiAuthRequired.HandlerFuncWithNext))
 	authRouter.UseHandler(serviceRouter)
 	globalMux.Handle("/v1/application/auth/", authRouter)
 
 	s := &http.Server{
-		Addr: a.config.Server.Addr,
+		Addr:    a.config.Server.Addr,
 		Handler: context.ClearHandler(cs.Handler(globalMux)),
 	}
 
@@ -151,7 +154,7 @@ func (a *Api) getUserInfo(r *http.Request) *userModels.User {
 		return nil
 	}
 	return &userModels.User{
-		Id: ctx["uid"].(string),
+		Id:   ctx["uid"].(string),
 		Name: ctx["username"].(string),
 	}
 }

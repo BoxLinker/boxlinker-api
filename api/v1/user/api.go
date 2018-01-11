@@ -3,40 +3,42 @@ package user
 import (
 	"net/http"
 
+	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	mAuth "github.com/BoxLinker/boxlinker-api/controller/middleware/auth"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
+	log "github.com/Sirupsen/logrus"
+	"github.com/codegangsta/negroni"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/rs/cors"
-	"github.com/BoxLinker/boxlinker-api/controller/manager"
-	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
-	mAuth "github.com/BoxLinker/boxlinker-api/controller/middleware/auth"
-	log "github.com/Sirupsen/logrus"
-	"github.com/codegangsta/negroni"
 )
 
 type ApiOptions struct {
-	Listen string
+	Listen  string
 	Manager manager.UserManager
-	Config *ApiConfig
+	Config  *ApiConfig
 }
 
 type ApiConfig struct {
 	ResetPassCallbackURI string
-	SendEmailUri string
+	SendEmailUri         string
+	SendRegMessageAPI    string
 }
 
 type Api struct {
-	listen string
+	listen  string
 	manager manager.UserManager
-	config *ApiConfig
+	config  *ApiConfig
 }
 
 func NewApi(config ApiOptions) *Api {
 	return &Api{
-		listen: config.Listen,
+		listen:  config.Listen,
 		manager: config.Manager,
-		config: config.Config,
+		config:  config.Config,
 	}
 }
+
 // get 	/v1/user/auth/token
 // post /v1/user/auth/login
 // post	/v1/user/auth/reg
@@ -102,7 +104,7 @@ func (a *Api) getUserInfo(r *http.Request) *userModels.User {
 		return nil
 	}
 	return &userModels.User{
-		Id: ctx["uid"].(string),
+		Id:   ctx["uid"].(string),
 		Name: ctx["username"].(string),
 	}
 }

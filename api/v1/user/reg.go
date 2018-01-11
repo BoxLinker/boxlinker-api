@@ -1,25 +1,27 @@
 package user
 
 import (
-	"net/http"
-	"github.com/BoxLinker/boxlinker-api"
-	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
-	"regexp"
 	"fmt"
+	"net/http"
+	"regexp"
+
+	"github.com/BoxLinker/boxlinker-api"
 	"github.com/BoxLinker/boxlinker-api/auth"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	"github.com/BoxLinker/boxlinker-api/modules/httplib"
 
-	userSettings "github.com/BoxLinker/boxlinker-api/settings/user"
-	emailApi "github.com/BoxLinker/boxlinker-api/api/v1/email"
 	"encoding/json"
 	"time"
+
+	emailApi "github.com/BoxLinker/boxlinker-api/api/v1/email"
+	userSettings "github.com/BoxLinker/boxlinker-api/settings/user"
 	"github.com/Sirupsen/logrus"
 )
 
 type RegForm struct {
-	Username 	string 	`json:"username"`
-	Password 	string 	`json:"password"`
-	Email 		string 	`json:"email"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
 }
 
 func (f *RegForm) validate() map[string]int {
@@ -77,7 +79,6 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	//pass, err := auth.Hash(form.Password)
 	pass, err := auth.Hash(form.Password)
 	if err != nil {
@@ -86,9 +87,9 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u := &userModels.UserToBeConfirmed{
-		Name: form.Username,
+		Name:     form.Username,
 		Password: string(pass),
-		Email: form.Email,
+		Email:    form.Email,
 	}
 
 	if err := a.manager.SaveUserToBeConfirmed(u); err != nil {
@@ -97,7 +98,7 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logrus.Debugf("gen verify email token: uid:%s, name:%s", u.Id, u.Name)
-	token, err := a.manager.GenerateToken(u.Id, u.Name, time.Now().Add(time.Minute * 15).Unix())
+	token, err := a.manager.GenerateToken(u.Id, u.Name, time.Now().Add(time.Minute*15).Unix())
 
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("generate token err: %v", err))
@@ -105,12 +106,12 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	eF := &emailApi.SendForm{
-		To: []string{form.Email},
+		To:      []string{form.Email},
 		Subject: "用户注册验证邮件 -- 无需回复",
-		Body: 	fmt.Sprintf("<h3>点击下面的链接以完成注册(有效时间 15 分钟)：</h3><br/><a target=\"_blank\" href=\"%s\">%s</a>",
-							fmt.Sprintf("%s?confirm_token=%s", userSettings.VERIFY_EMAIL_URI, token),
-							"点击这里，验证邮箱",
-				),
+		Body: fmt.Sprintf("<h3>点击下面的链接以完成注册(有效时间 15 分钟)：</h3><br/><a target=\"_blank\" href=\"%s\">%s</a>",
+			fmt.Sprintf("%s?confirm_token=%s", userSettings.VERIFY_EMAIL_URI, token),
+			"点击这里，验证邮箱",
+		),
 	}
 	logrus.Debugf("send token auth email: %+v", eF)
 	b, err := json.Marshal(eF)
@@ -139,5 +140,24 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("send email parse body err: %v", err))
 		return
 	}
+	// 向 application 服务发送注册成功消息，新建 namespace
+	// TODO API 用的 token 的 token_key 应该和 user 分开
+	apiToken, _ := a.manager.GenerateToken("0", "boxlinker", time.Now().Add(time.Minute*3).Unix())
+	regMsg := map[string]string{
+		"username": form.Username,
+	}
+	bA, _ := json.Marshal(regMsg)
+	res, err := httplib.Post(a.config.SendRegMessageAPI).Header("X-Access-Token", apiToken).Body(bA).Response()
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, fmt.Errorf("创建 namespace 错误: %v", err))
+		return
+	}
+
+	status, msg, results, _ = boxlinker.ParseResp(res.Body)
+	if status != boxlinker.STATUS_OK {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, results, fmt.Sprintf("创建 namespace 失败: %s", msg))
+		return
+	}
+
 	boxlinker.Resp(w, status, nil, msg)
 }

@@ -1,40 +1,46 @@
 package main
 
 import (
-	log "github.com/Sirupsen/logrus"
-	"github.com/urfave/cli"
-	"github.com/BoxLinker/boxlinker-api/controller/manager"
-	"github.com/BoxLinker/boxlinker-api/auth/builtin"
 	api "github.com/BoxLinker/boxlinker-api/api/v1/user"
+	"github.com/BoxLinker/boxlinker-api/auth/builtin"
+	"github.com/BoxLinker/boxlinker-api/controller/manager"
+	"github.com/BoxLinker/boxlinker-api/pkg/amqp"
+	log "github.com/Sirupsen/logrus"
 	_ "github.com/joho/godotenv/autoload"
+	"github.com/urfave/cli"
 
-	"os"
-	settings "github.com/BoxLinker/boxlinker-api/settings/user"
 	"fmt"
+	"os"
+
 	"github.com/BoxLinker/boxlinker-api/cmd"
-	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	"github.com/BoxLinker/boxlinker-api/controller/models"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
+	settings "github.com/BoxLinker/boxlinker-api/settings/user"
 )
 
 var (
 	flags = []cli.Flag{
 		cli.StringFlag{
-			Name: "confirm-email-token-secret",
-			Value:	"arandomconfirmemailtokensecret",
+			Name:   "token-key",
+			EnvVar: "TOKEN_KEY",
+		},
+		cli.StringFlag{
+			Name:   "confirm-email-token-secret",
+			Value:  "arandomconfirmemailtokensecret",
 			EnvVar: "CONFIRM_EMAIL_TOKEN_SECRET",
 		},
 		cli.StringFlag{
-			Name: "send-email-uri",
-			Value: "http://localhost:8081/v1/email/send",
+			Name:   "send-email-uri",
+			Value:  "http://localhost:8081/v1/email/send",
 			EnvVar: "SEND_EMAIL_URI",
 		},
 		cli.StringFlag{
-			Name: "reset-pass-callback-uri",
+			Name:   "reset-pass-callback-uri",
 			EnvVar: "RESET_PASS_CALLBACK_URI",
 		},
 		cli.StringFlag{
-			Name: "verify-email-uri",
-			Value: "http://localhost:8080/v1/user/auth/confirm_email",
+			Name:   "verify-email-uri",
+			Value:  "http://localhost:8080/v1/user/auth/confirm_email",
 			EnvVar: "VERIFY_EMAIL_URI",
 		},
 
@@ -54,17 +60,39 @@ var (
 			EnvVar: "ADMIN_EMAIL",
 		},
 		cli.StringFlag{
-			Name: 	"user-password-salt",
-			Value:	"arandomuserpasswordsalt",
+			Name:   "user-password-salt",
+			Value:  "arandomuserpasswordsalt",
 			EnvVar: "USER_PASSWORD_SALT",
 		},
 		cli.StringFlag{
-			Name:  "cookie-domain",
-			Value: "localhost",
+			Name:   "cookie-domain",
+			Value:  "localhost",
 			EnvVar: "COOKIE_DOMAIN",
 		},
-
-
+		cli.StringFlag{
+			Name:   "amqp-uri",
+			EnvVar: "AMQP_URI",
+		},
+		cli.StringFlag{
+			Name:   "amqp-exchange",
+			EnvVar: "AMQP_EXCHANGE",
+		},
+		cli.StringFlag{
+			Name:   "amqp-exchange-type",
+			EnvVar: "AMQP_EXCHANGE_TYPE",
+		},
+		cli.BoolFlag{
+			Name:   "amqp-reliable",
+			EnvVar: "AMQP_RELIABLE",
+		},
+		cli.StringFlag{
+			Name:   "amqp-routing-key",
+			EnvVar: "AMQP_ROUTING_KEY",
+		},
+		cli.StringFlag{
+			Name:   "send-reg-message-api",
+			EnvVar: "SEND_REG_MESSAGE_API",
+		},
 	}
 )
 
@@ -91,7 +119,6 @@ func action(c *cli.Context) error {
 
 	settings.InitSettings(c)
 
-
 	authenticator := builtin.NewAuthenticator()
 
 	//controllerManager, err := manager.NewManager(manager.ManagerOptions{
@@ -106,7 +133,16 @@ func action(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("new db engine err: %v", err)
 	}
-	controllerManager, err := manager.NewUserManager(engine, authenticator)
+
+	amqpProducer := amqp.NewProducer(amqp.ProducerOptions{
+		URI:          c.String("amqp-uri"),
+		Exchange:     c.String("amqp-exchange"),
+		ExchangeType: c.String("amqp-exchange-type"),
+		RoutingKey:   c.String("amqp-routing-key"),
+		Reliable:     c.Bool("amqp-reliable"),
+	})
+
+	controllerManager, err := manager.NewUserManager(engine, authenticator, amqpProducer)
 
 	if err != nil {
 		return fmt.Errorf("New Manager: %s", err.Error())
@@ -117,11 +153,12 @@ func action(c *cli.Context) error {
 	}
 
 	return api.NewApi(api.ApiOptions{
-		Listen: c.String("listen"),
+		Listen:  c.String("listen"),
 		Manager: controllerManager,
 		Config: &api.ApiConfig{
 			ResetPassCallbackURI: c.String("reset-pass-callback-uri"),
-			SendEmailUri: c.String("send-email-uri"),
+			SendEmailUri:         c.String("send-email-uri"),
+			SendRegMessageAPI:    c.String("send-reg-message-api"),
 		},
 	}).Run()
 

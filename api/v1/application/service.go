@@ -249,7 +249,7 @@ func (a *Api) QueryService(w http.ResponseWriter, r *http.Request) {
 	output := make([]*ServiceForm, 0)
 	var start, end int
 	l := len(svcs.Items)
-	// todo 这里得判断 ings deploys 和 svcs 长度是否一样
+	// todo 这里得判断 ings deploys 和 svcs 长度是否一��
 	pc.TotalCount = l
 	if pc.Offset() >= l {
 		start = 0

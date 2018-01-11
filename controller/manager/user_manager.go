@@ -1,15 +1,16 @@
 package manager
 
 import (
-	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
-	mAuth "github.com/BoxLinker/boxlinker-api/auth"
-	"github.com/BoxLinker/boxlinker-api/pkg/amqp"
-	"github.com/go-xorm/xorm"
 	"fmt"
-	settings "github.com/BoxLinker/boxlinker-api/settings/user"
+
 	"github.com/BoxLinker/boxlinker-api"
-	log "github.com/Sirupsen/logrus"
 	"github.com/BoxLinker/boxlinker-api/auth"
+	mAuth "github.com/BoxLinker/boxlinker-api/auth"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
+	"github.com/BoxLinker/boxlinker-api/pkg/amqp"
+	settings "github.com/BoxLinker/boxlinker-api/settings/user"
+	log "github.com/Sirupsen/logrus"
+	"github.com/go-xorm/xorm"
 )
 
 type UserManager interface {
@@ -20,9 +21,9 @@ type UserManager interface {
 	// user
 	CheckAdminUser() error
 	GetUserByName(username string) (*userModels.User, error)
-	GetUserById(id string) (*userModels.User)
+	GetUserById(id string) *userModels.User
 	GetUsers(pageConfig boxlinker.PageConfig) ([]*userModels.User, error)
-	GetUserByEmail(email string)(*userModels.User, error)
+	GetUserByEmail(email string) (*userModels.User, error)
 	SaveUser(user *userModels.User) error
 
 	SaveUserToBeConfirmed(user *userModels.UserToBeConfirmed) error
@@ -35,50 +36,32 @@ type UserManager interface {
 	UpdatePassword(id string, password string) (bool, error)
 }
 
-type DefaultUserManager struct{
+type DefaultUserManager struct {
 	DefaultManager
 	authenticator mAuth.Authenticator
-	engine *xorm.Engine
-	producer *amqp.Producer
+	engine        *xorm.Engine
+	producer      *amqp.Producer
 }
 
 type ManagerOptions struct {
 	Authenticator mAuth.Authenticator
-	DBUser string
-	DBPassword string
-	DBName string
-	DBHost string
-	DBPort int
+	DBUser        string
+	DBPassword    string
+	DBName        string
+	DBHost        string
+	DBPort        int
 }
 
 //func NewUserManager(config ManagerOptions) (Manager, error) {
-func NewUserManager(engine *xorm.Engine, authenticator auth.Authenticator) (UserManager, error) {
-
-	//dbOptions := models.DBOptions{
-	//	User: config.DBUser,
-	//	Password: config.DBPassword,
-	//	Name: config.DBName,
-	//	Host: config.DBHost,
-	//	Port: config.DBPort,
-	//}
-	//log.Infof("New Xorm Engine: %+v", dbOptions)
-	//engine, err := models.NewEngine(dbOptions)
-	//if err != nil {
-	//	return nil, fmt.Errorf("new xorm engine err: %v", err)
-	//}
-
+func NewUserManager(engine *xorm.Engine, authenticator auth.Authenticator, amqpProducer *amqp.Producer) (UserManager, error) {
 	return &DefaultUserManager{
 		authenticator: authenticator,
-		engine: engine,
+		engine:        engine,
+		producer:      amqpProducer,
 	}, nil
 }
 
-
 func (m DefaultUserManager) VerifyUsernamePassword(username, password, hash string) (bool, error) {
-	//hash, err := mAuth.Hash(password)
-	//if err != nil {
-	//	return false, err
-	//}
 	return m.authenticator.Authenticate(username, password, hash)
 }
 
@@ -91,7 +74,7 @@ func (m DefaultUserManager) GetUserToBeConfirmed(id string, username string) (*u
 	defer sess.Close()
 
 	u := &userModels.UserToBeConfirmed{
-		Id: id,
+		Id:   id,
 		Name: username,
 	}
 
@@ -154,7 +137,6 @@ func (m DefaultUserManager) SaveUser(user *userModels.User) error {
 	return sess.Commit()
 }
 
-
 func (m DefaultUserManager) CheckAdminUser() error {
 	log.Debugf("CheckAdminUser ...")
 	sess := m.engine.NewSession()
@@ -164,13 +146,13 @@ func (m DefaultUserManager) CheckAdminUser() error {
 	}
 	if has, _ := sess.Get(adminUser); !has {
 		pass, err := mAuth.Hash(settings.ADMIN_PASSWORD)
-		if err != nil{
+		if err != nil {
 			return err
 		}
 		u := &userModels.User{
-			Name: settings.ADMIN_NAME,
+			Name:     settings.ADMIN_NAME,
 			Password: pass,
-			Email: settings.ADMIN_EMAIL,
+			Email:    settings.ADMIN_EMAIL,
 		}
 		if _, err := sess.Insert(u); err != nil {
 			sess.Rollback()
@@ -201,7 +183,7 @@ func (m DefaultUserManager) GetUserByName(username string) (*userModels.User, er
 	return u, nil
 }
 
-func (m DefaultUserManager) GetUserByEmail(email string)(*userModels.User, error) {
+func (m DefaultUserManager) GetUserByEmail(email string) (*userModels.User, error) {
 	u := &userModels.User{
 		Email: email,
 	}
@@ -214,15 +196,13 @@ func (m DefaultUserManager) GetUserByEmail(email string)(*userModels.User, error
 	return u, nil
 }
 
-func (m DefaultUserManager) GetUserById(id string) (*userModels.User) {
+func (m DefaultUserManager) GetUserById(id string) *userModels.User {
 	u := &userModels.User{}
 	if found, _ := m.engine.Id(id).Get(u); found {
 		return u
 	}
 	return nil
 }
-
-
 
 func (m DefaultUserManager) IsUserExists(username string) (bool, error) {
 	u := &userModels.User{
@@ -263,4 +243,3 @@ func (m DefaultUserManager) UpdatePassword(id string, password string) (bool, er
 	}
 	return true, sess.Commit()
 }
-
