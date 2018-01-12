@@ -3,6 +3,7 @@ package manager
 import (
 	"github.com/go-xorm/xorm"
 	appModels "github.com/BoxLinker/boxlinker-api/controller/models/application"
+	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	"github.com/Sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -26,6 +27,7 @@ type ApplicationManager interface {
 	DeleteVolume(namespace, name string) error
 	CreateVolume(namespace string, volume *models.Volume) (*apiv1.PersistentVolumeClaim, error)
 	QueryVolume(namespace string, pc boxlinker.PageConfig) ([]apiv1.PersistentVolumeClaim, error)
+	GetUserByName(name string) (*userModels.User)
 
 }
 
@@ -34,6 +36,19 @@ type DefaultApplicationManager struct {
 	engine *xorm.Engine
 	clientSet *kubernetes.Clientset
 	prometheusMonitor *monitor.PrometheusMonitor
+}
+
+func (m *DefaultApplicationManager) GetUserByName(name string) (*userModels.User) {
+	user := &userModels.User{
+		Name: name,
+	}
+	if found, err := m.engine.Get(user); found {
+		if err != nil {
+			logrus.Errorf("GetUserByName err: %v", err)
+		}
+		return user
+	}
+	return nil
 }
 
 func (m *DefaultApplicationManager) GetServiceByName(namespace, svcName string) (bool, error, *apiv1.Service, *extv1beta1.Ingress, *appsv1beta1.Deployment) {

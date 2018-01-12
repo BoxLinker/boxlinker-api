@@ -88,6 +88,7 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 
 	u := &userModels.UserToBeConfirmed{
 		Name:     form.Username,
+		RegistryKey: fmt.Sprintf("%s:%s", form.Username, form.Password),
 		Password: string(pass),
 		Email:    form.Email,
 	}

@@ -59,6 +59,7 @@ type UserToBeConfirmed struct {
 	Name 	string `xorm:"NOT NULL"`
 	Password string `xorm:"NOT NULL"`
 	Email string `xorm:"NOT NULL"`
+	RegistryKey string `xorm:"NOT NULL"`
 
 	Created     time.Time `xorm:"-"`
 	CreatedUnix int64
