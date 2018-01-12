@@ -2,15 +2,17 @@ package user
 
 import (
 	"time"
+
 	"github.com/go-xorm/xorm"
 	"github.com/satori/go.uuid"
 )
 
 type User struct {
-	Id 	string `xorm:"pk"`
-	Name 	string `xorm:"INDEX UNIQUE NOT NULL"`
-	Password string `xorm:"NOT NULL"`
-	Email string `xorm:"UNIQUE NOT NULL"`
+	Id          string `xorm:"pk"`
+	Name        string `xorm:"INDEX UNIQUE NOT NULL"`
+	RegistryKey string `xorm:"NOT NULL"`
+	Password    string `xorm:"NOT NULL"`
+	Email       string `xorm:"UNIQUE NOT NULL"`
 
 	Created     time.Time `xorm:"-"`
 	CreatedUnix int64
@@ -45,20 +47,19 @@ func (me *User) AfterSet(colName string, _ xorm.Cell) {
 
 func (me *User) APIJson() map[string]interface{} {
 	return map[string]interface{}{
-		"id": me.Id,
-		"name": me.Name,
-		"email": me.Email,
+		"id":      me.Id,
+		"name":    me.Name,
+		"email":   me.Email,
 		"created": time.Unix(me.CreatedUnix, 0).Format("2006-01-02"),
 		"updated": time.Unix(me.UpdatedUnix, 0).Format("2006-01-02"),
 	}
 }
 
-
 type UserToBeConfirmed struct {
-	Id 	string `xorm:"pk"`
-	Name 	string `xorm:"NOT NULL"`
-	Password string `xorm:"NOT NULL"`
-	Email string `xorm:"NOT NULL"`
+	Id          string `xorm:"pk"`
+	Name        string `xorm:"NOT NULL"`
+	Password    string `xorm:"NOT NULL"`
+	Email       string `xorm:"NOT NULL"`
 	RegistryKey string `xorm:"NOT NULL"`
 
 	Created     time.Time `xorm:"-"`

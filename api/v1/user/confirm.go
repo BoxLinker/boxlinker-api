@@ -1,15 +1,16 @@
 package user
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
+
+	"github.com/BoxLinker/boxlinker-api"
 	"github.com/BoxLinker/boxlinker-api/auth"
 	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
-	"github.com/Sirupsen/logrus"
-	"fmt"
-	"time"
-	"encoding/json"
 	"github.com/BoxLinker/boxlinker-api/modules/httplib"
-	"github.com/BoxLinker/boxlinker-api"
+	"github.com/Sirupsen/logrus"
 )
 
 func (a *Api) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
@@ -47,7 +48,8 @@ func (a *Api) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	// TODO API 用的 token 的 token_key 应该和 user 分开
 	apiToken, _ := a.manager.GenerateToken("0", "boxlinker", time.Now().Add(time.Minute*3).Unix())
 	regMsg := map[string]string{
-		"username": username,
+		"username":     username,
+		"registry_key": u.RegistryKey,
 	}
 	bA, _ := json.Marshal(regMsg)
 	res, err := httplib.Post(a.config.SendRegMessageAPI).Header("X-Access-Token", apiToken).Body(bA).Response()
@@ -63,9 +65,10 @@ func (a *Api) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u1 := &userModels.User{
-		Name: u.Name,
-		Email: u.Email,
-		Password: u.Password,
+		Name:        u.Name,
+		Email:       u.Email,
+		Password:    u.Password,
+		RegistryKey: u.RegistryKey,
 	}
 
 	if err := a.manager.SaveUser(u1); err != nil {
@@ -82,4 +85,3 @@ func (a *Api) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	//w.Write([]byte("confirm user success: "+u1.Id+" "+ u1.Name))
 
 }
-

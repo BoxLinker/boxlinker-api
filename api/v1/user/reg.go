@@ -10,6 +10,7 @@ import (
 	userModels "github.com/BoxLinker/boxlinker-api/controller/models/user"
 	"github.com/BoxLinker/boxlinker-api/modules/httplib"
 
+	"encoding/base64"
 	"encoding/json"
 	"time"
 
@@ -87,10 +88,10 @@ func (a *Api) Reg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u := &userModels.UserToBeConfirmed{
-		Name:     form.Username,
-		RegistryKey: fmt.Sprintf("%s:%s", form.Username, form.Password),
-		Password: string(pass),
-		Email:    form.Email,
+		Name:        form.Username,
+		RegistryKey: base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", form.Username, form.Password))),
+		Password:    string(pass),
+		Email:       form.Email,
 	}
 
 	if err := a.manager.SaveUserToBeConfirmed(u); err != nil {
