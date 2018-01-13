@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"io"
+	"github.com/Sirupsen/logrus"
 )
 
 type respResults struct {
-	status int
-	msg string
-	results interface{}
+	Status int
+	Msg string
+	Results interface{}
 }
 
 func ParseResp(body io.ReadCloser) (int, string, interface{}, error){
@@ -18,11 +19,12 @@ func ParseResp(body io.ReadCloser) (int, string, interface{}, error){
 	if err != nil {
 		return -1, "", nil, err
 	}
-	re := &respResults{}
-	if err := json.Unmarshal(b, re); err != nil {
+	logrus.Debugf("resp body: %s", string(b))
+	var re respResults
+	if err := json.Unmarshal(b, &re); err != nil {
 		return -1, "", nil, err
 	}
-	return re.status, re.msg, re.results, nil
+	return re.Status, re.Msg, re.Results, nil
 }
 
 func Resp(w http.ResponseWriter, status int, results interface{}, msg ...string){

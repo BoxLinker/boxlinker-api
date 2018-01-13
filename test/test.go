@@ -1,14 +1,11 @@
 package main
 
-import "fmt"
-
-type User struct {
-	Name string
-}
+import (
+	"fmt"
+	"encoding/base64"
+)
 
 func main(){
-	var arr *User
 
-	arr.Name = "123"
-	fmt.Printf("arr: %v", arr)
+	fmt.Println(base64.StdEncoding.EncodeToString([]byte("{\"auths\":{\"index.boxlinker.com\":{\"auth\":\"ZGVtbzpqdXN0NGZ1bg==\"}}}")))
 }

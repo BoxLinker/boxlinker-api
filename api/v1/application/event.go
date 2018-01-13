@@ -1,7 +1,6 @@
 package application
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 
@@ -54,7 +53,16 @@ func (a *Api) Event(w http.ResponseWriter, r *http.Request) {
 		// 但毕竟 registry-key 的 secret 文件因为是 base64 编码 也不够安全
 
 		// 创建 registry-key
-		dockerconfigJSON := fmt.Sprintf(`{"auths":{"index.boxlinker.com":{"auth":"%s"}}}`, regMsg.RegistryKey)
+		dockerconfigJSON := fmt.Sprintf(
+			`{
+	"auths": {
+		"index.boxlinker.com": {
+			"auth": "%s"
+		}
+	}
+}`,
+			regMsg.RegistryKey)
+		logrus.Debugf("create registry-key for namespace(%s): %s", ns, dockerconfigJSON)
 		if _, err := a.clientSet.Secrets(ns).Create(&apiv1.Secret{
 			Type: apiv1.SecretTypeDockerConfigJson,
 			ObjectMeta: metav1.ObjectMeta{
@@ -62,7 +70,7 @@ func (a *Api) Event(w http.ResponseWriter, r *http.Request) {
 				Namespace: ns,
 			},
 			Data: map[string][]byte{
-				".dockerconfigjson": []byte(base64.StdEncoding.EncodeToString([]byte(dockerconfigJSON))),
+				apiv1.DockerConfigJsonKey: []byte(dockerconfigJSON),
 			},
 		}); err != nil {
 			// 如果创建 secret registry-key 失败，那么回滚删除 namespace
@@ -75,10 +83,12 @@ func (a *Api) Event(w http.ResponseWriter, r *http.Request) {
 			boxlinker.Resp(w, boxlinker.STATUS_FAILED, nil, fmt.Sprintf("create registry key for namespace(%s) err: %v", ns, err))
 			return
 		}
+		logrus.Debugf("event ok %s", ns)
 		boxlinker.Resp(w, boxlinker.STATUS_OK, map[string]string{
 			"namespace": ns,
 		})
 		return
 	}
+	logrus.Debugf("unknow type %s", tType)
 	boxlinker.Resp(w, boxlinker.STATUS_FAILED, nil, fmt.Sprintf("unknow type %s", tType))
 }

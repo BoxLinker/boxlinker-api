@@ -63,7 +63,6 @@ func (a *Api) QueryImages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var output []map[string]interface{}
 	var images []*registryModels.Image
 	pc := boxlinker.ParsePageConfig(r)
 	var err error
@@ -90,6 +89,7 @@ func (a *Api) QueryImages(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
 		return
 	}
+	output := make([]map[string]interface{}, 0)
 	for _, image := range images {
 		output = append(output, image.APISimpleJson())
 	}

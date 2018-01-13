@@ -59,6 +59,7 @@ func (a *Api) ConfirmEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	status, msg, results, _ := boxlinker.ParseResp(res.Body)
+	logrus.Debugf("request create namespace res: %d, %s, %v", status, msg, results)
 	if status != boxlinker.STATUS_OK {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, results, fmt.Sprintf("创建 namespace 失败: %s", msg))
 		return

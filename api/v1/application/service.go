@@ -227,15 +227,63 @@ func (a *Api) UpdateService(w http.ResponseWriter, r *http.Request) {
 	boxlinker.Resp(w, boxlinker.STATUS_OK, deploy)
 }
 
+/**
+ * @api {get} /services/:name 根据名称查询服务详情
+ * @apiName GetService
+ * @apiGroup Service
+ *
+ * @apiParam {string} name 服务名称
+ *
+ * @apiSuccess {String} name 服务名称
+ * @apiSuccess {String} image  服务的镜像
+ * @apiSuccess {String} memory  服务的内存配额
+ * @apiSuccess {String} host  服务访问全路径
+ * @apiSuccess {Object[]} ports  服务的内存配额
+ * @apiSuccess {Object[]} ports.protocol  端口协议
+ * @apiSuccess {Object[]} ports.port  端口
+ * @apiSuccess {Object[]} ports.path  端口对应的服务访问路径
+ */
 func (a *Api) GetService(w http.ResponseWriter, r *http.Request) {
 	user := a.getUserInfo(r)
 	svcName := mux.Vars(r)["name"]
 	svc, err := a.clientSet.CoreV1().Services(user.Name).Get(svcName, metav1.GetOptions{})
 	if err != nil {
-		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, err.Error())
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, fmt.Sprintf("获取 svc 失败：%v", err))
 		return
 	}
-	boxlinker.Resp(w, boxlinker.STATUS_OK, svc)
+	deploy, err := a.clientSet.AppsV1beta1().Deployments(user.Name).Get(svcName, metav1.GetOptions{})
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, fmt.Sprintf("获取 deploy 失败：%v", err))
+		return
+	}
+	ing, err := a.getIngressByName(user.Name, svcName)
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, fmt.Sprintf("获取 ingress 失败: %v", err))
+		return
+	}
+	containers := deploy.Spec.Template.Spec.Containers
+	if len(containers) != 1 {
+		boxlinker.Resp(w, boxlinker.STATUS_FAILED, nil, fmt.Sprintf("deploy %s 的 container 数量不等于 1: %d", len(containers)))
+		return
+	}
+	container := containers[0]
+	result := &ServiceResult{
+		Name: svc.Name,
+		Image: container.Image,
+		Memory: container.Resources.Limits.Memory().String(),
+		Host: svc.Annotations["host"],
+	}
+	portsResult := make([]*PortResult, 0)
+	ports := svc.Spec.Ports
+	for _, port := range ports {
+		portsResult = append(portsResult, &PortResult{
+			Port: int(port.Port),
+			Protocol: string(port.Protocol),
+			Path: a.findPathByPortAndSvcName(svc.Name, port, ing),
+		})
+	}
+	result.Ports = portsResult
+	boxlinker.Resp(w, boxlinker.STATUS_OK, result)
 }
 
 func (a *Api) QueryService(w http.ResponseWriter, r *http.Request) {
