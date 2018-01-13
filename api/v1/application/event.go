@@ -62,7 +62,7 @@ func (a *Api) Event(w http.ResponseWriter, r *http.Request) {
 				Namespace: ns,
 			},
 			Data: map[string][]byte{
-				".dockerconfigjson": []byte(base64.StdEncoding.EncodeToString(dockerconfigJSON)),
+				".dockerconfigjson": []byte(base64.StdEncoding.EncodeToString([]byte(dockerconfigJSON))),
 			},
 		}); err != nil {
 			// 如果创建 secret registry-key 失败，那么回滚删除 namespace

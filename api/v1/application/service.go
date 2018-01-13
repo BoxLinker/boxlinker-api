@@ -27,6 +27,7 @@ type ServiceForm struct {
 	Memory string             `json:"memory"`
 	CPU    string             `json:"cpu"`
 	Ports  []*ServicePortForm `json:"ports"`
+	Host   string             `json:"host"`
 }
 
 func getDeployByName(name string, list *appsv1beta1.DeploymentList) *appsv1beta1.Deployment {
@@ -39,6 +40,15 @@ func getDeployByName(name string, list *appsv1beta1.DeploymentList) *appsv1beta1
 }
 
 func getIngByName(name string, list *extv1beta1.IngressList) *extv1beta1.Ingress {
+	for _, item := range list.Items {
+		if item.Name == name {
+			return &item
+		}
+	}
+	return nil
+}
+
+func getSvcByName(name string, list *apiv1.ServiceList) *apiv1.Service {
 	for _, item := range list.Items {
 		if item.Name == name {
 			return &item
@@ -266,6 +276,7 @@ func (a *Api) QueryService(w http.ResponseWriter, r *http.Request) {
 	for _, item := range listOut {
 		deploy := getDeployByName(item.Name, deploys)
 		ing := getIngByName(item.Name, ings)
+		svc := getSvcByName(item.Name, svcs)
 		line := &ServiceForm{
 			Name: item.Name,
 		}
@@ -276,6 +287,7 @@ func (a *Api) QueryService(w http.ResponseWriter, r *http.Request) {
 				line.Image = container.Image
 				line.Memory = container.Resources.Limits.Memory().String()
 				line.CPU = container.Resources.Limits.Cpu().String()
+				line.Host = svc.Annotations["host"]
 			} else {
 				logrus.Warnf("Found Service contains more than one container: (%s)", item.Name)
 			}
@@ -399,6 +411,8 @@ func (a *Api) CreateService(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	host := fmt.Sprintf("%s-%s.%s.boxlinker.com", user.Name, form.Name, "lb1")
+
 	// create service
 	svcPorts := make([]apiv1.ServicePort, 0)
 	// ports
@@ -409,6 +423,9 @@ func (a *Api) CreateService(w http.ResponseWriter, r *http.Request) {
 	service := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: form.Name,
+			Annotations: map[string]string{
+				"host": host,
+			},
 		},
 		Spec: apiv1.ServiceSpec{
 			Ports: svcPorts,
@@ -432,7 +449,7 @@ func (a *Api) CreateService(w http.ResponseWriter, r *http.Request) {
 	}
 	rules := make([]extv1beta1.IngressRule, 0)
 	rules = append(rules, extv1beta1.IngressRule{
-		Host: fmt.Sprintf("%s-%s.%s.boxlinker.com", user.Name, form.Name, "lb1"),
+		Host: host,
 		IngressRuleValue: extv1beta1.IngressRuleValue{
 			HTTP: &extv1beta1.HTTPIngressRuleValue{
 				Paths: paths,
