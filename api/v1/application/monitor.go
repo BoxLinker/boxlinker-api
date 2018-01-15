@@ -1,17 +1,18 @@
 package application
 
 import (
-	"net/http"
-	"github.com/gorilla/mux"
 	"fmt"
-	"github.com/BoxLinker/boxlinker-api"
+	"net/http"
 	"time"
+
+	"github.com/BoxLinker/boxlinker-api"
 	"github.com/BoxLinker/boxlinker-api/modules/monitor"
+	"github.com/gorilla/mux"
 )
 
-type rResult struct{
-	Result [][]interface{}	`json:"result"`
-	Err string `json:"err"`
+type rResult struct {
+	Result [][]interface{} `json:"result"`
+	Err    string          `json:"err"`
 }
 
 func (a *Api) Monitor(w http.ResponseWriter, r *http.Request) {
@@ -31,13 +32,12 @@ func (a *Api) Monitor(w http.ResponseWriter, r *http.Request) {
 	}
 	monitorOps := &monitor.Options{
 		Start: start,
-		End: end,
-		Step: step,
+		End:   end,
+		Step:  step,
 	}
 	output := make(map[string]*rResult)
 
-
-	if re, err := a.prometheusMonitor.Query(fmt.Sprintf("sum(container_memory_usage_bytes{container_name=~\"%s\",namespace=\"%s\"}) by (container_name)", serviceName, user.Name), monitorOps); err != nil {
+	if re, err := a.prometheusMonitor.Query(fmt.Sprintf("sum(container_memory_usage_bytes{container_name=~\"%s-.*\",namespace=\"%s\"}) by (container_name)", serviceName, user.Name), monitorOps); err != nil {
 		output["memory"] = &rResult{
 			Err: err.Error(),
 		}
@@ -48,7 +48,7 @@ func (a *Api) Monitor(w http.ResponseWriter, r *http.Request) {
 	}
 	if re, err := a.prometheusMonitor.Query(fmt.Sprintf(
 		"sum(rate(container_network_receive_bytes_total{pod_name=~\"%s-.*\",namespace=\"%s\",interface=\"eth0\"}[1h])) by (container_name)",
-			serviceName, user.Name), monitorOps); err != nil {
+		serviceName, user.Name), monitorOps); err != nil {
 		output["networkReceive"] = &rResult{
 			Err: err.Error(),
 		}
@@ -59,7 +59,7 @@ func (a *Api) Monitor(w http.ResponseWriter, r *http.Request) {
 	}
 	if re, err := a.prometheusMonitor.Query(fmt.Sprintf(
 		"sum(rate(container_network_transmit_bytes_total{pod_name=~\"%s-.*\",namespace=\"%s\",interface=\"eth0\"}[1h])) by (container_name)",
-			serviceName, user.Name), monitorOps); err != nil {
+		serviceName, user.Name), monitorOps); err != nil {
 		output["networkTransmit"] = &rResult{
 			Err: err.Error(),
 		}
