@@ -9,26 +9,21 @@ import (
 
 var ErrNotFound = errors.New("resource not found")
 
-func (a *Api) getIngresses(namespace string) ([]*appv1beta1.Ingress) {
-	ings, err := a.clientSet.ExtensionsV1beta1().Ingresses(namespace).List(metav1.ListOptions{})
-	if err != nil {
-		return nil
-	}
-	results := make([]*appv1beta1.Ingress, 0, len(ings.Items))
-	for _, item := range ings.Items {
-		results = append(results, &item)
-	}
-	return results
+func (a *Api) getIngresses(namespace string) (*appv1beta1.IngressList, error) {
+	return a.clientSet.ExtensionsV1beta1().Ingresses(namespace).List(metav1.ListOptions{})
 }
 
 func (a *Api) getIngressByName(namespace string, ingressName string) (*appv1beta1.Ingress, error) {
-	ings := a.getIngresses(namespace)
-	if ings == nil {
+	ings, err := a.getIngresses(namespace)
+	if err != nil {
+		return nil, err
+	}
+	if ings == nil || len(ings.Items) == 0 {
 		return nil, ErrNotFound
 	}
-	for _, item := range ings {
+	for _, item := range ings.Items {
 		if item.Name == ingressName {
-			return item, nil
+			return &item, nil
 		}
 	}
 	return nil, ErrNotFound

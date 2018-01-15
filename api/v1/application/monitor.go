@@ -37,7 +37,7 @@ func (a *Api) Monitor(w http.ResponseWriter, r *http.Request) {
 	output := make(map[string]*rResult)
 
 
-	if re, err := a.prometheusMonitor.Query(fmt.Sprintf("sum(container_memory_usage_bytes{container_name=\"%s\",namespace=\"%s\"}) by (container_name)", serviceName, user.Name), monitorOps); err != nil {
+	if re, err := a.prometheusMonitor.Query(fmt.Sprintf("sum(container_memory_usage_bytes{container_name=~\"%s\",namespace=\"%s\"}) by (container_name)", serviceName, user.Name), monitorOps); err != nil {
 		output["memory"] = &rResult{
 			Err: err.Error(),
 		}
