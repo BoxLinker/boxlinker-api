@@ -7,6 +7,7 @@ type PortResult struct {
 }
 
 type ServiceResult struct {
+	ContainerID string `json:"containerID"`
 	Name string `json:"name"`
 	Image string `json:"image"`
 	Memory string `json:"memory"`

@@ -9,7 +9,7 @@ spec:
   selector:
     app: web-console
   ports:
-  - port: 3000
+  - port: 80
     name: web
 ---
 apiVersion: extensions/v1beta1
@@ -30,11 +30,11 @@ spec:
       - env:
         - name: NODE_ENV
           value: production
-        image: index.boxlinker.com/boxlinker/web-console:v1
+        image: index.boxlinker.com/boxlinker/web-console:v0.1-0-g1f834cf
         imagePullPolicy: Always
         name: web-console
         ports:
-        - containerPort: 3000
+        - containerPort: 80
           name: pro
           protocol: TCP
       nodeSelector:
@@ -58,4 +58,4 @@ spec:
       - path: /
         backend:
           serviceName: web-console
-          servicePort: 3000
+          servicePort: 80
