@@ -256,6 +256,28 @@ func (a *Api) GetService(w http.ResponseWriter, r *http.Request) {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, fmt.Sprintf("获取 deploy 失败：%v", err))
 		return
 	}
+	pods, err := a.clientSet.CoreV1().Pods(user.Name).List(metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("app=%s", svcName),
+	})
+	podsResult := make([]*PodResult, 0)
+	for _, pod := range pods.Items {
+		containers := pod.Status.ContainerStatuses
+		if len(containers) != 1 {
+			logrus.Errorf("multiple containers found in pod(%s), the container len must be 1.", pod.Name)
+			continue
+		}
+		cont := containers[0]
+		podsResult = append(podsResult, &PodResult{
+			ID: string(pod.UID),
+			Name: pod.Name,
+			ContainerID: cont.ContainerID,
+		})
+	}
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, fmt.Sprintf("获取 pod 失败：%v", err))
+		return
+	}
+
 	ing, err := a.getIngressByName(user.Name, svcName)
 	if err != nil {
 		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, fmt.Sprintf("获取 ingress 失败: %v", err))
@@ -272,6 +294,7 @@ func (a *Api) GetService(w http.ResponseWriter, r *http.Request) {
 		Image: container.Image,
 		Memory: container.Resources.Limits.Memory().String(),
 		Host: svc.Annotations["host"],
+		Pods: podsResult,
 	}
 	portsResult := make([]*PortResult, 0)
 	ports := svc.Spec.Ports

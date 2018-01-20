@@ -6,12 +6,18 @@ type PortResult struct {
 	Path string `json:"path"`
 }
 
+type PodResult struct {
+	Name string `json:"name"`
+	ID string `json:"id"`
+	ContainerID string `json:"container_id"`
+}
+
 type ServiceResult struct {
-	ContainerID string `json:"containerID"`
 	Name string `json:"name"`
 	Image string `json:"image"`
 	Memory string `json:"memory"`
 	Host string `json:"host"`
 	Ports []*PortResult `json:"ports"`
+	Pods []*PodResult `json:"pods"`
 }
 
