@@ -74,6 +74,8 @@ func (r *esReader) start() {
 			continue
 		}
 		r.startTime = hits[len(hits) - 1].Source.Timestamp
+		logrus.Debugf("log fetch got hits len: %d", len(hits))
+		logrus.Println("========")
 		for _, hit := range hits {
 			r.notify <-[]byte(hit.Source.Log)
 		}
@@ -111,6 +113,7 @@ func (r *esReader) read() ([]byte, error) {
 		containerID,
 		startTime,
 	)).SetTimeout(time.Second*10, time.Second*10).Response()
+	logrus.Debugf("log fetch (%s -> now)", startTime)
 	if err != nil {
 		return nil, err
 	}
