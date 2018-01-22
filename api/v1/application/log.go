@@ -8,10 +8,12 @@ import (
 	"github.com/cabernety/gopkg/httplib"
 	"github.com/cabernety/gopkg/stream"
 	streamhttp "github.com/cabernety/gopkg/stream/http"
+	apiv1 "k8s.io/api/core/v1"
 	"time"
 	"github.com/gorilla/mux"
 	"encoding/json"
 	"github.com/Sirupsen/logrus"
+	"io"
 )
 
 type Result struct {
@@ -70,7 +72,7 @@ func (r *esReader) start() {
 		}
 		hits := result.Hits.Hits
 		if len(hits) <= 0 {
-			time.Sleep(time.Second / 10)
+			time.Sleep(time.Second)
 			continue
 		}
 		r.startTime = hits[len(hits) - 1].Source.Timestamp
@@ -86,33 +88,36 @@ func (r *esReader) start() {
 func (r *esReader) read() ([]byte, error) {
 	containerID := r.containerID
 	startTime := r.startTime
-	res, err := httplib.Get(fmt.Sprintf(
+	uri := fmt.Sprintf(
 		"https://es.boxlinker.com/%s/fluentd/_search?filter_path=took,hits.hits._id,hits.hits._source.log,hits.hits._source.@timestamp",
-		fmt.Sprintf("logstash-%s", time.Now().Format("2006.01.02")),
-	)).Body(fmt.Sprintf(
+		fmt.Sprintf("logstash-%s", time.Now().Format("2006.01.02")))
+	body := fmt.Sprintf(
 		`
-				{
-				  "query": {
-					"bool": {
-					  "filter": [{
-						"term": {
-						  "docker.container_id": "%s"
-						}
-					  },{
-						"range": {
-						  "@timestamp": {
-							"gt": "%s",
-							"lte": "now"
-						  }
-						}
-					  }]
-					}
-				  }
-				}
+{
+  "query": {
+	"bool": {
+	  "filter": [{
+		"term": {
+		  "docker.container_id": "%s"
+		}
+	  },{
+		"range": {
+		  "@timestamp": {
+			"gt": "%s",
+			"lte": "now"
+		  }
+		}
+	  }]
+	}
+  }
+}
 			`,
 		containerID,
 		startTime,
-	)).SetTimeout(time.Second*10, time.Second*10).Response()
+	)
+	logrus.Debugf("log fetch uri: %s", uri)
+	logrus.Debugf("log fetch body: %s", body)
+	res, err := httplib.Get(uri).Body(body).SetTimeout(time.Second*10, time.Second*10).Response()
 	logrus.Debugf("log fetch (%s -> now)", startTime)
 	if err != nil {
 		return nil, err
@@ -124,6 +129,26 @@ func (r *esReader) read() ([]byte, error) {
 
 	return b, nil
 }
+
+func (a *Api) LogCurrent(w http.ResponseWriter, r *http.Request) {
+	user := a.getUserInfo(r)
+	svcName := mux.Vars(r)["svcName"]
+	podName := mux.Vars(r)["podName"]
+	req := a.clientSet.Pods(user.Name).GetLogs(podName, &apiv1.PodLogOptions{
+		Container: fmt.Sprintf("%s-container", svcName),
+		Follow: true,
+	})
+	logIO, err := req.Stream()
+	if err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, fmt.Sprintf("fetch log err: %v", err))
+		return
+	}
+
+	if _, err := io.Copy(w, logIO); err != nil {
+		boxlinker.Resp(w, boxlinker.STATUS_INTERNAL_SERVER_ERR, nil, fmt.Sprintf("copy log err: %v", err))
+	}
+}
+
 
 /**
  *	@param {string} startTime 日志的起始时间，格式为 `2017-11-11T05:22:37.000882442Z` 或者不传

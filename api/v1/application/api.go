@@ -125,6 +125,7 @@ func (a *Api) Run() error {
 	serviceRouter.HandleFunc("/v1/application/auth/volume/{name}", a.DeleteVolume).Methods("DELETE")
 
 	serviceRouter.HandleFunc("/v1/application/auth/log/{containerID}", a.Log).Methods("GET")
+	serviceRouter.HandleFunc("/v1/application/auth/log/current/{svcName}/{podName}", a.LogCurrent).Methods("GET")
 	serviceRouter.HandleFunc("/v1/application/auth/monitor/{serviceName}", a.Monitor).Methods("GET")
 
 	serviceRouter.HandleFunc("/v1/application/auth/event/{type}", a.Event).Methods("POST")
